@@ -1,7 +1,7 @@
 ---
 title: 'DS 621: Homwork 1 (Group3)'
 subtitle: 'Homework 1 Description'
-author: 'Zach Alexander, Sam Bellows, Donny Lofland, Joshua REgiste, Neil Shah, Aaron Zalik'
+author: 'Zach Alexander, Sam Bellows, Donny Lofland, Joshua Registe, Neil Shah, Aaron Zalki'
 data: '09/02/2020'
 output:
   html_document:
@@ -16,6 +16,26 @@ output:
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r message=FALSE, warning=FALSE, include=FALSE, paged.print=FALSE}
+library(ggplot2)
+library(ggfortify)
+library(gridExtra)
+library(forecast)
+library(fpp2)
+library(fma)
+library(kableExtra)
+library(e1071)
+library(mlbench)
+library(ggcorrplot)
+library(DataExplorer)
+library(timeDate)
+library(caret)
+library(tibble)
+library(dplyr)
+library(tidyverse)
+library(tidyr)
 ```
 
 ## Overview
