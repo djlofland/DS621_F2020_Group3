@@ -4,14 +4,14 @@ subtitle: 'Homework 1 Description'
 author: 'Zach Alexander, Sam Bellows, Donny Lofland, Joshua REgiste, Neil Shah, Aaron Zalik'
 data: '09/02/2020'
 output:
-  pdf_document:
-    extra_dependencies: ["geometry", "multicol", "multirow", "xcolor"]
   html_document:
     theme: cerulean
     highlight: pygments
     css: ./lab.css
     toc: true
     toc_float: true
+  pdf_document:
+    extra_dependencies: ["geometry", "multicol", "multirow", "xcolor"]
 ---
 
 ```{r setup, include=FALSE}
@@ -75,7 +75,15 @@ Descriptive text ... Lorem ipsum dolor sit amet, consectetur adipiscing elit. Fu
 
 #### Data Summary
 
-#### Variable Plots
+### Variable Plots
+
+#### Pairplot
+
+#### Histograms
+
+#### Distribution
+
+#### Multicolinearlity
 
 ## 2. Data Preparation
 
