@@ -31,6 +31,14 @@ provided). Below is a short description of the variables of interest in the data
 
 ![Variables of Interest](./figures/Variables.png)
 
+### Deliverables:
+
+* A write-up submitted in PDF format. Your write-up should have four sections. Each one is described
+below. You may assume you are addressing me as a fellow data scientist, so do not need to shy away
+from technical details.
+* Assigned predictions (the number of wins for the team) for the evaluation data set.
+* Include your R statistical programming code in an Appendix.
+
 ```{r overview, echo=FALSE}
 
 ```
