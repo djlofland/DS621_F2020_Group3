@@ -99,8 +99,24 @@ Lastly, the error variable makes no sense to me. From my experience watching bas
 
 ```{r}
 # We have chosen to impute the median as there are strong outliers that may skew the mean. Could revisit for advanced imputation via prediction later.
+no_outlier_df <- df
+# 4000 strikeouts is an average of 25 strikeouts per game, which is ridiculous.
+no_outlier_df$TEAM_PITCHING_SO <- ifelse(no_outlier_df$TEAM_PITCHING_SO > 4000, NA, no_outlier_df$TEAM_PITCHING_SO)
 
-clean_df <- df %>% impute(what = 'median') %>% as.data.frame()
+# 5000 hits is an average of 30 hits allowed per game, which is also ridiculous.
+no_outlier_df$TEAM_PITCHING_H <- ifelse(no_outlier_df$TEAM_PITCHING_H > 5000, NA, no_outlier_df$TEAM_PITCHING_H)
+
+# 2000 walks is an average of 13 walks per game which is unlikely.
+no_outlier_df$TEAM_PITCHING_BB <- ifelse(no_outlier_df$TEAM_PITCHING_BB > 2000, NA, no_outlier_df$TEAM_PITCHING_BB)
+
+clean_df <- no_outlier_df %>% impute(what = 'median') %>% as.data.frame()
+
+# From the plots, the team with 0 wins has 0 in multiple other categories. I believe this is missing data, not valid data.
+clean_df <- clean_df %>% filter(TARGET_WINS != 0)
+
+gather_clean_df <- clean_df %>% gather(key = 'variable', value = 'value', -INDEX, -TARGET_WINS)
+
+gather_clean_df %>% ggplot(aes(x = value, y = TARGET_WINS)) + geom_point() + facet_wrap(~variable, scales = 'free')
 
 colSums(clean_df %>% sapply(is.na))
 ```
