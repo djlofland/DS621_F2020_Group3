@@ -36,6 +36,8 @@ library(tibble)
 library(dplyr)
 library(tidyverse)
 library(tidyr)
+
+df <- read.csv('datasets/moneyball-training-data.csv')
 ```
 
 ## Overview
@@ -76,8 +78,20 @@ c. Is the data correlated to the target variable (or to other variables?)
 d. Are any of the variables missing and need to be imputed “fixed”?
 
 ```{r explore, echo=FALSE}
+gather_df <- df %>% gather(key = 'variable', value = 'value', -INDEX, -TARGET_WINS)
 
+gather_df %>% ggplot(aes(x = value, y = TARGET_WINS)) + geom_point() + facet_wrap(~variable, scales = 'free')
 ```
+
+Here we plot every variable against the target variable number of wins to get a feeling for which variables may be predictive of wins. The plots indicate some clear relationships, such as hitting more doubles or more home runs clearly improves the number of wins.
+
+The plots also reveal significant issues with the data. First, there are many data points that contain missing data that will need to be either imputed or discarded. Second, it appears we have some missing data encoded as 0 and some nonsensical outliers.
+
+There is a team with 0 wins in the dataset. This seems unlikely. Many of the hitting categories include teams at 0; it is unlikely that a team hit 0 home runs over the course of a season.
+
+The pitching variables also include many 0's, for instance there are multiple teams with 0 strikeouts by their pitchers over the season which is extremely unlikely. The pitching data also includes strange outliers such as a team loggin 20000 strikeouts, that would be an average of 160 strikeouts per game which is impossible. Also team pitching walks and team pitching hits have strange outliers.
+
+Lastly, the error variable makes no sense to me. From my experience watching baseball, teams usually score 2 or less errors per game, which would lead to an overall team error of approximately 320 over the course of a season, which does not match the scale of the error variable.
 
 ### Data Snapshot
 
