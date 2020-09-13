@@ -36,8 +36,13 @@ library(tibble)
 library(dplyr)
 library(tidyverse)
 library(tidyr)
+library(GGally)
+library(corrplot)
+library(RColorBrewer)
 
 df <- read.csv('datasets/moneyball-training-data.csv')
+
+names(df) <- names(df) %>% str_replace_all('TEAM_', '')
 ```
 
 ## Overview
@@ -78,11 +83,64 @@ c. Is the data correlated to the target variable (or to other variables?)
 d. Are any of the variables missing and need to be imputed “fixed”?
 
 ```{r explore, echo=FALSE}
-gather_df <- df %>% gather(key = 'variable', value = 'value', -INDEX, -TARGET_WINS)
-
-gather_df %>% ggplot(aes(x = value, y = TARGET_WINS)) + geom_point() + facet_wrap(~variable, scales = 'free')
-
 colSums(df %>% sapply(is.na))
+```
+
+We see that there are some columns with significant missing values. There are also outliers present in the data.
+
+### Cleaning
+
+```{r}
+# We have chosen to impute the median as there are strong outliers that may skew the mean. Could revisit for advanced imputation via prediction later.
+no_outlier_df <- df
+
+# 4000 strikeouts is an average of 25 strikeouts per game, which is ridiculous.
+no_outlier_df$PITCHING_SO <- ifelse(no_outlier_df$PITCHING_SO > 4000, NA, no_outlier_df$PITCHING_SO)
+
+# 5000 hits is an average of 30 hits allowed per game, which is also ridiculous.
+no_outlier_df$PITCHING_H <- ifelse(no_outlier_df$PITCHING_H > 5000, NA, no_outlier_df$PITCHING_H)
+
+# 2000 walks is an average of 13 walks per game which is unlikely.
+no_outlier_df$PITCHING_BB <- ifelse(no_outlier_df$PITCHING_BB > 2000, NA, no_outlier_df$PITCHING_BB)
+
+clean_df <- no_outlier_df %>% impute(what = 'median') %>% as.data.frame()
+
+# From the plots, the team with 0 wins has 0 in multiple other categories. I believe this is missing data, not valid data.
+clean_df <- clean_df %>% filter(TARGET_WINS != 0)
+
+gather_clean_df <- clean_df %>% gather(key = 'variable', value = 'value', -INDEX, -TARGET_WINS)
+```
+
+### Data Snapshot
+
+#### Columns
+
+Descriptive text ... Lorem ipsum dolor sit amet, consectetur adipiscing elit. Fusce ut augue pharetra, luctus lectus ut, rutrum quam. Aenean quis tellus ac felis accumsan pellentesque id ut purus. Fusce eget ligula eu est congue aliquet. Vivamus hendrerit felis varius lorem suscipit venenatis. Fusce facilisis arcu ac lorem cursus, non pretium velit finibus. Suspendisse eu nulla tellus. Nunc viverra elementum dolor, ut scelerisque nisl. Ut iaculis faucibus ultricies. Praesent fermentum eu libero et consequat. Phasellus vitae euismod lectus, a ultrices dui. Nunc vel leo rhoncus, cursus elit quis, rhoncus nisl. Aenean id urna et nibh tempor iaculis nec non quam. In tincidunt luctus ex eget viverra.
+
+```{r columns, echo=FALSE}
+col_summary <- gather_clean_df %>% group_by(variable) %>% summarise(count = n(), mean = mean(value), med = median(value), sd = sd(value), min = min(value), max = max(value)) %>% as.data.frame()
+
+kableExtra::kable(col_summary)
+```
+
+#### Data Sample
+
+```{r data, echo=FALSE}
+kable(clean_df[1:5,])
+```
+
+#### Dimensions 
+
+```{r dims, echo=FALSE}
+c(nrow(clean_df), ncol(clean_df))
+```
+
+#### Data Summary
+
+### Variable Plots
+
+```{r, fig.height = 10, fig.width = 8}
+featurePlot(clean_df[,3:ncol(clean_df)], clean_df[,2], pch = 20)
 ```
 
 Here we plot every variable against the target variable number of wins to get a feeling for which variables may be predictive of wins. The plots indicate some clear relationships, such as hitting more doubles or more home runs clearly improves the number of wins.
@@ -95,65 +153,42 @@ The pitching variables also include many 0's, for instance there are multiple te
 
 Lastly, the error variable makes no sense to me. From my experience watching baseball, teams usually score 2 or less errors per game, which would lead to an overall team error of approximately 320 over the course of a season, which does not match the scale of the error variable.
 
-### Cleaning
-
-```{r}
-# We have chosen to impute the median as there are strong outliers that may skew the mean. Could revisit for advanced imputation via prediction later.
-no_outlier_df <- df
-# 4000 strikeouts is an average of 25 strikeouts per game, which is ridiculous.
-no_outlier_df$TEAM_PITCHING_SO <- ifelse(no_outlier_df$TEAM_PITCHING_SO > 4000, NA, no_outlier_df$TEAM_PITCHING_SO)
-
-# 5000 hits is an average of 30 hits allowed per game, which is also ridiculous.
-no_outlier_df$TEAM_PITCHING_H <- ifelse(no_outlier_df$TEAM_PITCHING_H > 5000, NA, no_outlier_df$TEAM_PITCHING_H)
-
-# 2000 walks is an average of 13 walks per game which is unlikely.
-no_outlier_df$TEAM_PITCHING_BB <- ifelse(no_outlier_df$TEAM_PITCHING_BB > 2000, NA, no_outlier_df$TEAM_PITCHING_BB)
-
-clean_df <- no_outlier_df %>% impute(what = 'median') %>% as.data.frame()
-
-# From the plots, the team with 0 wins has 0 in multiple other categories. I believe this is missing data, not valid data.
-clean_df <- clean_df %>% filter(TARGET_WINS != 0)
-
-gather_clean_df <- clean_df %>% gather(key = 'variable', value = 'value', -INDEX, -TARGET_WINS)
-
-gather_clean_df %>% ggplot(aes(x = value, y = TARGET_WINS)) + geom_point() + facet_wrap(~variable, scales = 'free')
-
-colSums(clean_df %>% sapply(is.na))
-```
-
-### Data Snapshot
-
-#### Columns
-
-Descriptive text ... Lorem ipsum dolor sit amet, consectetur adipiscing elit. Fusce ut augue pharetra, luctus lectus ut, rutrum quam. Aenean quis tellus ac felis accumsan pellentesque id ut purus. Fusce eget ligula eu est congue aliquet. Vivamus hendrerit felis varius lorem suscipit venenatis. Fusce facilisis arcu ac lorem cursus, non pretium velit finibus. Suspendisse eu nulla tellus. Nunc viverra elementum dolor, ut scelerisque nisl. Ut iaculis faucibus ultricies. Praesent fermentum eu libero et consequat. Phasellus vitae euismod lectus, a ultrices dui. Nunc vel leo rhoncus, cursus elit quis, rhoncus nisl. Aenean id urna et nibh tempor iaculis nec non quam. In tincidunt luctus ex eget viverra.
-
-```{r columns, echo=FALSE}
-
-```
-
-#### Data Sample
-
-```{r data, echo=FALSE}
-
-```
-
-#### Dimensions 
-
-```{r dims, echo=FALSE}
-
-```
-
-#### Data Summary
-
-### Variable Plots
-
 #### Pairplot
 
+```{r, fig.height = 10, fig.width = 8}
+clean_df %>% ggpairs(columns = 2:ncol(clean_df))
+```
+
 #### Histograms
+
+```{r, fig.height = 10, fig.width = 8}
+histbox <- function(df, box) {
+    par(mfrow = box)
+    ndf <- dimnames(df)[[2]] # Thanks for nothing, scale!!
+    for (i in seq_along(ndf)) {
+        data <- na.omit(unlist(df[, i]))
+        hist(data, breaks = "fd", main = paste("Histogram of", ndf[i]),
+             xlab = ndf[i], freq = FALSE)
+        lines(density(data, kernel = "ep"), col = 'blue')
+    }
+    par(mfrow = c(1, 1))
+}
+histbox(clean_df[, 2:17], c(4, 4))
+```
 
 #### Distribution
 
 #### Multicolinearlity
+
+```{r}
+correlation = cor(clean_df[,3:ncol(clean_df)], use = 'pairwise.complete.obs')
+
+corrplot(correlation, 'ellipse', type = 'lower', order = 'hclust',
+         col=brewer.pal(n=8, name="RdYlBu"))
+
+palette = colorRampPalette(c("green", "white", "red"))(20)
+heatmap(x = correlation, col = palette, symm = T)
+```
 
 ## 2. Data Preparation
 
