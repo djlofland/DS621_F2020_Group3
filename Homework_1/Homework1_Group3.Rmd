@@ -15,10 +15,12 @@ output:
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE)
 ```
 
-```{r message=FALSE, warning=FALSE, include=FALSE, paged.print=FALSE}
+```{r echo=FALSE, message=FALSE, warning=FALSE, include=FALSE, paged.print=FALSE}
+library(MASS)
+library(rpart.plot)
 library(ggplot2)
 library(ggfortify)
 library(gridExtra)
@@ -32,115 +34,121 @@ library(ggcorrplot)
 library(DataExplorer)
 library(timeDate)
 library(caret)
-library(tibble)
-library(dplyr)
-library(tidyverse)
-library(tidyr)
 library(GGally)
 library(corrplot)
 library(RColorBrewer)
+library(tibble)
+library(dplyr)
+library(tidyr)
+library(tidyverse)
 
-df <- read.csv('datasets/moneyball-training-data.csv')
-
-names(df) <- names(df) %>% str_replace_all('TEAM_', '')
 ```
 
 ## Overview
 
-In this homework assignment, you will explore, analyze and model a data set containing approximately 2200
-records. Each record represents a professional baseball team from the years 1871 to 2006 inclusive. Each record
-has the performance of the team for the given year, with all of the statistics adjusted to match the performance of
-a 162 game season.
+In professional sports, there is a huge interest in attempting to leverage historic statistics to both predict future outcomes (wins/losses) and explore opportunities for tuning or improving a team or individual's performance.  This data-driven approach to sports has gained a large following over the last decade and entered mass media in the form of fantasy leagues, movies (e.g. Moneyball), and websites/podcasts (e.g. FiveThirtyEight).  In this analysis, we will be using a classic baseball data set with the goal to build several different models capable of predicting team wins over a season given on other team stats during that season (i.e. homeruns, strikeouts, base hits, etc).  The data set containing approximately 2200 records, representing professional baseball team statistics from the years 1871 to 2006 inclusive and each record has the performance of the team for the given year, with all of the statistics adjusted to match the performance of a 162 game season.  
 
-Your objective is to build a multiple linear regression model on the training data to predict the number of wins
-for the team. You can only use the variables given to you (or variables that you derive from the variables
-provided). Below is a short description of the variables of interest in the data set:
+We will first explore the data looking for issues or challenges (i.e. missing data, outliers, possible coding errors, multicollinearlity, etc).  Once we have a handle on the data, we will apply any necessary cleaning steps.  Once we have a reasonable dataset to work with, we will build and evaluate three different linear models that predict seasonal wins.  Our dataset includes both training data and evaluation data - we will training using the main training data, then evaluate models based on how well they perform against the holdout evaluation data.  Finally we will select a final model that offers the best compromise for accuracy and simplicity. 
 
-![Variables of Interest](./figures/Variables.png)
-
-### Deliverables:
-
-* A write-up submitted in PDF format. Your write-up should have four sections. Each one is described
-below. You may assume you are addressing me as a fellow data scientist, so do not need to shy away
-from technical details.
-* Assigned predictions (the number of wins for the team) for the evaluation data set.
-* Include your R statistical programming code in an Appendix.
-
-```{r overview, echo=FALSE}
-
-```
 
 ## 1. Data Exploration
 
-Describe the size and the variables in the moneyball training data set. Consider that too much detail will cause a
+*Describe the size and the variables in the moneyball training data set. Consider that too much detail will cause a
 manager to lose interest while too little detail will make the manager consider that you aren’t doing your job. Some
 suggestions are given below. Please do NOT treat this as a check list of things to do to complete the assignment.
-You should have your own thoughts on what to tell the boss. These are just ideas.
+You should have your own thoughts on what to tell the boss. These are just ideas.*
 
-a. Mean / Standard Deviation / Median
-b. Bar Chart or Box Plot of the data
-c. Is the data correlated to the target variable (or to other variables?)
-d. Are any of the variables missing and need to be imputed “fixed”?
-
-```{r explore, echo=FALSE}
-colSums(df %>% sapply(is.na))
-```
-
-We see that there are some columns with significant missing values. There are also outliers present in the data.
-
-### Cleaning
-
-```{r}
-# We have chosen to impute the median as there are strong outliers that may skew the mean. Could revisit for advanced imputation via prediction later.
-no_outlier_df <- df
-
-# 4000 strikeouts is an average of 25 strikeouts per game, which is ridiculous.
-no_outlier_df$PITCHING_SO <- ifelse(no_outlier_df$PITCHING_SO > 4000, NA, no_outlier_df$PITCHING_SO)
-
-# 5000 hits is an average of 30 hits allowed per game, which is also ridiculous.
-no_outlier_df$PITCHING_H <- ifelse(no_outlier_df$PITCHING_H > 5000, NA, no_outlier_df$PITCHING_H)
-
-# 2000 walks is an average of 13 walks per game which is unlikely.
-no_outlier_df$PITCHING_BB <- ifelse(no_outlier_df$PITCHING_BB > 2000, NA, no_outlier_df$PITCHING_BB)
-
-clean_df <- no_outlier_df %>% impute(what = 'median') %>% as.data.frame()
-
-# From the plots, the team with 0 wins has 0 in multiple other categories. I believe this is missing data, not valid data.
-clean_df <- clean_df %>% filter(TARGET_WINS != 0)
-
-gather_clean_df <- clean_df %>% gather(key = 'variable', value = 'value', -INDEX, -TARGET_WINS)
-```
-
-### Data Snapshot
+### Dataset
 
 #### Columns
 
 Descriptive text ... Lorem ipsum dolor sit amet, consectetur adipiscing elit. Fusce ut augue pharetra, luctus lectus ut, rutrum quam. Aenean quis tellus ac felis accumsan pellentesque id ut purus. Fusce eget ligula eu est congue aliquet. Vivamus hendrerit felis varius lorem suscipit venenatis. Fusce facilisis arcu ac lorem cursus, non pretium velit finibus. Suspendisse eu nulla tellus. Nunc viverra elementum dolor, ut scelerisque nisl. Ut iaculis faucibus ultricies. Praesent fermentum eu libero et consequat. Phasellus vitae euismod lectus, a ultrices dui. Nunc vel leo rhoncus, cursus elit quis, rhoncus nisl. Aenean id urna et nibh tempor iaculis nec non quam. In tincidunt luctus ex eget viverra.
 
+```{r load_data, echo=FALSE}
+df <- read.csv('datasets/moneyball-training-data.csv')
+df_eval <- read.csv('datasets/moneyball-evaluation-data.csv')
+
+# Remove superfluous TEAM_ from column names
+names(df) <- names(df) %>% str_replace_all('TEAM_', '')
+```
+
+![Variables of Interest](./figures/Variables.png)
+
+Lets look at the first few rows to get a sense for the data.
+
+```{r data_head, echo=FALSE} 
+# Display firt few row of raw data set
+kable(df[1:5,])
+```
+
+*Note we will drop the INDEX column as it offers no information towards predictive models.*
+
+```{r echo=FALSE}
+# Drop the INDEX column - this won't be useful
+df <- df %>% dplyr::select(-INDEX)
+```
+
+#### Dimensions
+
+```{r echo=FALSE}
+# Display row and column counts
+c(nrow(df), ncol(df))
+```
+
+#### Summary Stats
+
+Descriptive text ... Lorem ipsum dolor sit amet, consectetur adipiscing elit. Fusce ut augue pharetra, luctus lectus ut, rutrum quam. Aenean quis tellus ac felis accumsan pellentesque id ut purus. Fusce eget ligula eu est congue aliquet. Vivamus hendrerit felis varius lorem suscipit venenatis. Fusce facilisis arcu ac lorem cursus, non pretium velit finibus. Suspendisse eu nulla tellus. Nunc viverra elementum dolor, ut scelerisque nisl. Ut iaculis faucibus ultricies. Praesent fermentum eu libero et consequat. Phasellus vitae euismod lectus, a ultrices dui. Nunc vel leo rhoncus, cursus elit quis, rhoncus nisl. Aenean id urna et nibh tempor iaculis nec non quam. In tincidunt luctus ex eget viverra.
+
 ```{r columns, echo=FALSE}
-col_summary <- gather_clean_df %>% group_by(variable) %>% summarise(count = n(), mean = mean(value), med = median(value), sd = sd(value), min = min(value), max = max(value)) %>% as.data.frame()
+summary(df)
 
-kableExtra::kable(col_summary)
+# gather_df <- df %>% gather(key = 'variable', value = 'value', -TARGET_WINS)
+# col_summary <- gather_df %>% group_by(variable) %>% summarise(count = n(), mean = mean(value), med = median(value), sd = sd(value), min = min(value), max = max(value)) %>% as.data.frame()
+# kableExtra::kable(col_summary)
 ```
 
-#### Data Sample
 
-```{r data, echo=FALSE}
-kable(clean_df[1:5,])
+#### Distributions
+
+```{r echo=FALSE}
+
+histbox <- function(df, box) {
+    par(mfrow = box)
+    ndf <- dimnames(df)[[2]] # Thanks for nothing, scale!!
+    for (i in seq_along(ndf)) {
+        data <- na.omit(unlist(df[, i]))
+        hist(data, breaks = "fd", main = paste("Histogram of", ndf[i]),
+             xlab = ndf[i], freq = FALSE)
+        lines(density(data, kernel = "ep"), col = 'blue')
+    }
+    par(mfrow = c(1, 1))
+}
+
+histbox(df, c(4, 4))
 ```
 
-#### Dimensions 
+```{r, fig.height = 10, fig.width = 10, echo=FALSE}
+# Prepare data for ggplot
+gather_df <- df %>% gather(key = 'variable', value = 'value')
 
-```{r dims, echo=FALSE}
-c(nrow(clean_df), ncol(clean_df))
+# Histogram plots of each variable
+ggplot(gather_df) + 
+  geom_histogram(aes(x=value, y = ..density..), bins=30) + 
+  geom_density(aes(x=value), color='blue') +
+  facet_wrap(. ~variable, scales='free', ncol=4)
+
+# Boxplots for each variable
+ggplot(gather_df, aes(variable, value)) + 
+  geom_boxplot() + 
+  facet_wrap(. ~variable, scales='free', ncol=6)
 ```
 
-#### Data Summary
+Looking at both the histograms and boxplots, we notice that many of the features are NOT normally distributed (a concern for linear regressions), there are a significant number of outliers that we will have to consider, and we see a large number of zero values for some features.  For zero values and outliers, we will want to qualitatively assess whether those make sense and whether we need to transform them in some way.
 
-### Variable Plots
+#### Variable Plots
 
-```{r, fig.height = 10, fig.width = 8}
-featurePlot(clean_df[,3:ncol(clean_df)], clean_df[,2], pch = 20)
+```{r, fig.height = 10, fig.width = 10, echo=False}
+featurePlot(df[,2:ncol(df)], df[,1], pch = 20)
 ```
 
 Here we plot every variable against the target variable number of wins to get a feeling for which variables may be predictive of wins. The plots indicate some clear relationships, such as hitting more doubles or more home runs clearly improves the number of wins.
@@ -153,35 +161,63 @@ The pitching variables also include many 0's, for instance there are multiple te
 
 Lastly, the error variable makes no sense to me. From my experience watching baseball, teams usually score 2 or less errors per game, which would lead to an overall team error of approximately 320 over the course of a season, which does not match the scale of the error variable.
 
+#### Missing Data
+
+When we initially viewed the first few rows of the raw data, we already noticed missing data.  Let's assess which fields have missing data.
+
+```{r echo=FALSE} 
+missing <- colSums(df %>% sapply(is.na))
+missing_pct <- round(missing / nrow(df) * 100, 2)
+stack(sort(missing_pct, decreasing = TRUE))
+```
+
+Notice that ~91.6% of the rows are missing the BATTING_HBP field - we will just drop this column from onsideration.  The columns BASERUN_CS (base run caught stealing) and BASERUN_SB (stolen bases) both have missing values.  According to baseball history, stolen bases weren't tracked officially until 1887, so some of the missing data could be from 1871-1886.  We will impute those value.  There are a high percentage of missing BATTING_SO (batter strike outs) and PITCHING_SO (pitching strike outs) which seem highly unlikely - we will also impute those missing values.
+
+```{r echo=FALSE}
+# Drop the BATTING_HBP field
+df <- df %>% select(-BATTING_HBP)
+
+# We have chosen to impute the median as there are strong outliers that may skew the mean. Could revisit for advanced imputation via prediction later.
+no_outlier_df <- df
+
+# 4000 strikeouts is an average of 25 strikeouts per game, which is ridiculous.
+no_outlier_df$PITCHING_SO <- ifelse(no_outlier_df$PITCHING_SO > 4000, NA, no_outlier_df$PITCHING_SO)
+
+# 5000 hits is an average of 30 hits allowed per game, which is also ridiculous.
+no_outlier_df$PITCHING_H <- ifelse(no_outlier_df$PITCHING_H > 5000, NA, no_outlier_df$PITCHING_H)
+
+# 2000 walks is an average of 13 walks per game which is unlikely.
+no_outlier_df$PITCHING_BB <- ifelse(no_outlier_df$PITCHING_BB > 2000, NA, no_outlier_df$PITCHING_BB)
+
+# more than 480 errors is an average of 3 per game which is unlikely.
+no_outlier_df$FIELDING_E <- ifelse(no_outlier_df$FIELDING_E > 480, NA, no_outlier_df$FIELDING_E)
+
+clean_df <- no_outlier_df %>% impute(what = 'median') %>% as.data.frame()
+
+# From the plots, the team with 0 wins has 0 in multiple other categories. I believe this is missing data, not valid data.
+clean_df <- clean_df %>% filter(TARGET_WINS != 0)
+
+gather_clean_df <- clean_df %>% gather(key = 'variable', value = 'value', -TARGET_WINS)
+```
+
+#### Feature-Target Correlations
+
+```{r echo=FALSE}
+stack(sort(cor(clean_df[,1], clean_df[,2:ncol(clean_df)])[,], decreasing=TRUE))
+```
+
+When evaluating features for including in models, we will want to choose those with stronger positive or negaive correlations.  Features with correlations closer to zero will probably not provide any meaning information on explaining wins by a team.
+
 #### Pairplot
 
-```{r, fig.height = 10, fig.width = 8}
-clean_df %>% ggpairs(columns = 2:ncol(clean_df))
+```{r, fig.height = 10, fig.width = 10, echo=FALSE}
+clean_df %>% ggpairs(columns = 2:ncol(clean_df), progress = FALSE)
 ```
-
-#### Histograms
-
-```{r, fig.height = 10, fig.width = 8}
-histbox <- function(df, box) {
-    par(mfrow = box)
-    ndf <- dimnames(df)[[2]] # Thanks for nothing, scale!!
-    for (i in seq_along(ndf)) {
-        data <- na.omit(unlist(df[, i]))
-        hist(data, breaks = "fd", main = paste("Histogram of", ndf[i]),
-             xlab = ndf[i], freq = FALSE)
-        lines(density(data, kernel = "ep"), col = 'blue')
-    }
-    par(mfrow = c(1, 1))
-}
-histbox(clean_df[, 2:17], c(4, 4))
-```
-
-#### Distribution
 
 #### Multicolinearlity
 
-```{r}
-correlation = cor(clean_df[,3:ncol(clean_df)], use = 'pairwise.complete.obs')
+```{r echo=FALSE}
+correlation = cor(clean_df, use = 'pairwise.complete.obs')
 
 corrplot(correlation, 'ellipse', type = 'lower', order = 'hclust',
          col=brewer.pal(n=8, name="RdYlBu"))
@@ -190,22 +226,29 @@ palette = colorRampPalette(c("green", "white", "red"))(20)
 heatmap(x = correlation, col = palette, symm = T)
 ```
 
+When we start considering features for our models, we'll need to account for the correlations betwwen features and avoid including pairs with storng correlations.
+
 ## 2. Data Preparation
 
-Describe how you have transformed the data by changing the original variables or creating new variables. If you
-did transform the data or create new variables, discuss why you did this. Here are some possible transformations.
+### Removed Fields
 
-a. Fix missing values (maybe with a Mean or Median value)
-b. Create flags to suggest if a variable was missing
-c. Transform data by putting it into buckets
-d. Mathematical transforms such as log or square root (or use Box-Cox)
-e. Combine variables (such as ratios or adding or multiplying) to create new variables
+We removed the BATTING_HBP field as it was missing >90% of the data and the INDEX field as it offers no information for a model.  
 
-#### Missing Values
+### Missing Values
 
-#### Outliers
+Missing values found in BASERUN_CS (Caught Stolen Bases), FIELDING_DP (Double plays), BASERUN_SB (Stolen Bases), BATTING_SO (Batter Strike outs), PITCHING_SO (Pitcher Strike outs) were all replaced with median values.  It is highly unlikely that teams had none of these during an entire season.
 
-#### Impute
+### Outliers
+
+There are unreasonable outliers found in PITCHING_SO (pitching strikeouts), PITCHIN_H (allowed hits per game), PITCHING_BB (walks), and  FIELDING_E (fielding errors) that exceed what is reasonable or possible given standard game length.  While specific games might have outliers (e.g. in a game with extra innings), we wouldn't expect the totals per season to allow for outliers in every game.  Given this, we will replace any outliers with the median fro the data set.  Limits we set included: > 4000 PITCHING_SO (25 striekouts per game), > 5000 PITCHING_H (30 hits allowed per game), > 2000 PITCHING_BB (13 walks per game) and > 480 FIELDING_E (3 errors per game).
+
+### Transform non-normal
+
+```{R echo=FALSE}
+# TODO - Transform skewed data here.  Need to save off any parameters for applying against evaluation dataset.
+
+```
+
 
 ## 3. Build Models
 
@@ -219,6 +262,49 @@ Discuss the coefficients in the models, do they make sense? For example, if a te
 would be reasonably expected that such a team would win more games. However, if the coefficient is negative
 (suggesting that the team would lose more games), then that needs to be discussed. Are you keeping the model
 even though it is counter intuitive? Why? The boss needs to know.
+
+```{r echo=FALSE}
+#' Print a side-by-side Histogram and QQPlot of Residuals
+#'
+#' @param model A model
+#' @examples
+#' residPlot(myModel)
+#' @return null
+#' @export
+residPlot <- function(model) {
+  layout(matrix(c(1,1,2,3), 2, 2, byrow = TRUE))
+  plot(residuals(model))
+  hist(model[["residuals"]], freq = FALSE, breaks = "fd", main = "Residual Histogram",
+       xlab = "Residuals",col="lightgreen")
+  lines(density(model[["residuals"]], kernel = "ep"),col="blue", lwd=3)
+  curve(dnorm(x,mean=mean(model[["residuals"]]), sd=sd(model[["residuals"]])), col="red", lwd=3, lty="dotted", add=T)
+  qqnorm(model[["residuals"]], main = "Residual Q-Q plot")
+  qqline(model[["residuals"]],col="red", lwd=3, lty="dotted")
+  par(mfrow = c(1, 1))
+
+}
+
+
+multi_lm <- lm(TARGET_WINS ~ ., clean_df)
+(lm_s <- summary(multi_lm))
+residPlot(lm_s)
+
+mult_lm_final <- stepAIC(multi_lm, direction = "both",
+                         scope = list(upper = multi_lm, lower = ~ 1),
+                         scale = 0, trace = FALSE)
+(lmf_s <- summary(mult_lm_final))
+residPlot(lmf_s)
+```
+
+We can use a simple decision tre to help visualize feature importance.
+
+```{r echo=FALSE}
+dt_m <- caret::train(TARGET_WINS ~ ., data = clean_df, tuneLength = 19L, method = 'rpart2')
+rpart.plot(dt_m$finalModel, type = 1L)
+```
+```
+
+```
 
 ## 4. Select Models
 
@@ -234,6 +320,25 @@ mean squared error, (b) R2, (c) F-statistic, and (d) residual plots. Make predic
 
 ## Appendix
 
+### A. Moneyball Dataset Columns
+
+* INDEX: Identification Variable(Do not use)
+* TARGET_WINS: Number of wins
+* TEAM_BATTING_H : Base Hits by batters (1B,2B,3B,HR)
+* TEAM_BATTING_2B: Doubles by batters (2B)
+* TEAM_BATTING_3B: Triples by batters (3B)
+* TEAM_BATTING_HR: Home runs by batters (4B)
+* TEAM_BATTING_BB: Walks by batters
+* TEAM_BATTING_HBP: Batters hit by pitch (get a free base)
+* TEAM_BATTING_SO: Strikeouts by batters
+* TEAM_BASERUN_SB: Stolen bases
+* TEAM_BASERUN_CS: Caught stealing
+* TEAM_FIELDING_E: Errors
+* TEAM_FIELDING_DP: Double Plays
+* TEAM_PITCHING_BB: Walks allowed
+* TEAM_PITCHING_H: Hits allowed
+* TEAM_PITCHING_HR: Homeruns allowed
+* TEAM_PITCHING_SO: Strikeouts by pitchers
 
 ### R Code
 
