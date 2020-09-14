@@ -294,6 +294,9 @@ mult_lm_final <- stepAIC(multi_lm, direction = "both",
                          scale = 0, trace = FALSE)
 (lmf_s <- summary(mult_lm_final))
 residPlot(lmf_s)
+
+
+
 ```
 
 We can use a simple decision tree to help visualize feature importance.
@@ -301,6 +304,31 @@ We can use a simple decision tree to help visualize feature importance.
 ```{r echo=FALSE}
 dt_m <- caret::train(TARGET_WINS ~ ., data = clean_df, tuneLength = 19L, method = 'rpart2')
 rpart.plot(dt_m$finalModel, type = 1L)
+```
+
+We can also explicitly call out our variable importance using the Caret package which will determine our feature importance for each of the multiple linear regression models individually.
+
+```{r echo=FALSE}
+
+VarImpPlot<-function(LINEARMODEL){
+  varImp(LINEARMODEL) %>% as.data.frame() %>% 
+    ggplot(aes(x = reorder(rownames(.),desc(Overall)), y = Overall))+
+    geom_col(aes(fill = Overall))+
+    theme(panel.background = element_blank(),
+          panel.grid = element_blank(),
+          axis.text.x = element_text(angle = 90))+
+    scale_fill_gradient()+
+    labs(title = "LM Variable Importance",
+         x = "Parameter",
+         y = "Relative Importance")
+}
+VarImpPlot(multi_lm)
+
+
+```
+Comparing our above model to the reduced model below we can see we maintained the important predictors and the relative strength remains comparable.
+```{r echo=FALSE}
+VarImpPlot(mult_lm_final)
 ```
 
 
