@@ -287,6 +287,7 @@ residPlot <- function(model) {
 
 multi_lm <- lm(TARGET_WINS ~ ., clean_df)
 (lm_s <- summary(multi_lm))
+confint(multi_lm)
 residPlot(lm_s)
 
 mult_lm_final <- stepAIC(multi_lm, direction = "both",
@@ -296,15 +297,13 @@ mult_lm_final <- stepAIC(multi_lm, direction = "both",
 residPlot(lmf_s)
 ```
 
-We can use a simple decision tre to help visualize feature importance.
+We can use a simple decision tree to help visualize feature importance.
 
 ```{r echo=FALSE}
 dt_m <- caret::train(TARGET_WINS ~ ., data = clean_df, tuneLength = 19L, method = 'rpart2')
 rpart.plot(dt_m$finalModel, type = 1L)
 ```
-```
 
-```
 
 ## 4. Select Models
 
@@ -319,26 +318,6 @@ mean squared error, (b) R2, (c) F-statistic, and (d) residual plots. Make predic
 - B
 
 ## Appendix
-
-### A. Moneyball Dataset Columns
-
-* INDEX: Identification Variable(Do not use)
-* TARGET_WINS: Number of wins
-* TEAM_BATTING_H : Base Hits by batters (1B,2B,3B,HR)
-* TEAM_BATTING_2B: Doubles by batters (2B)
-* TEAM_BATTING_3B: Triples by batters (3B)
-* TEAM_BATTING_HR: Home runs by batters (4B)
-* TEAM_BATTING_BB: Walks by batters
-* TEAM_BATTING_HBP: Batters hit by pitch (get a free base)
-* TEAM_BATTING_SO: Strikeouts by batters
-* TEAM_BASERUN_SB: Stolen bases
-* TEAM_BASERUN_CS: Caught stealing
-* TEAM_FIELDING_E: Errors
-* TEAM_FIELDING_DP: Double Plays
-* TEAM_PITCHING_BB: Walks allowed
-* TEAM_PITCHING_H: Hits allowed
-* TEAM_PITCHING_HR: Homeruns allowed
-* TEAM_PITCHING_SO: Strikeouts by pitchers
 
 ### R Code
 
