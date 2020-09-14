@@ -110,7 +110,7 @@ summary(df)
 
 #### Distributions
 
-```{r echo=FALSE}
+```{r echo=FALSE, fig.height=12, fig.width=10}
 
 histbox <- function(df, box) {
     par(mfrow = box)
@@ -147,7 +147,7 @@ Looking at both the histograms and boxplots, we notice that many of the features
 
 #### Variable Plots
 
-```{r, fig.height = 10, fig.width = 10, echo=False}
+```{r, fig.height = 10, fig.width = 10, echo=FALSE}
 featurePlot(df[,2:ncol(df)], df[,1], pch = 20)
 ```
 
@@ -171,7 +171,7 @@ missing_pct <- round(missing / nrow(df) * 100, 2)
 stack(sort(missing_pct, decreasing = TRUE))
 ```
 
-Notice that ~91.6% of the rows are missing the BATTING_HBP field - we will just drop this column from onsideration.  The columns BASERUN_CS (base run caught stealing) and BASERUN_SB (stolen bases) both have missing values.  According to baseball history, stolen bases weren't tracked officially until 1887, so some of the missing data could be from 1871-1886.  We will impute those value.  There are a high percentage of missing BATTING_SO (batter strike outs) and PITCHING_SO (pitching strike outs) which seem highly unlikely - we will also impute those missing values.
+Notice that ~91.6% of the rows are missing the BATTING_HBP field - we will just drop this column from consideration.  The columns BASERUN_CS (base run caught stealing) and BASERUN_SB (stolen bases) both have missing values.  According to baseball history, stolen bases weren't tracked officially until 1887, so some of the missing data could be from 1871-1886.  We will impute those value.  There are a high percentage of missing BATTING_SO (batter strike outs) and PITCHING_SO (pitching strike outs) which seem highly unlikely - we will also impute those missing values.
 
 ```{r echo=FALSE}
 # Drop the BATTING_HBP field
@@ -226,7 +226,7 @@ palette = colorRampPalette(c("green", "white", "red"))(20)
 heatmap(x = correlation, col = palette, symm = T)
 ```
 
-When we start considering features for our models, we'll need to account for the correlations betwwen features and avoid including pairs with storng correlations.
+When we start considering features for our models, we'll need to account for the correlations between features and avoid including pairs with strng correlations.
 
 ## 2. Data Preparation
 
@@ -295,6 +295,9 @@ mult_lm_final <- stepAIC(multi_lm, direction = "both",
                          scale = 0, trace = FALSE)
 (lmf_s <- summary(mult_lm_final))
 residPlot(lmf_s)
+
+
+
 ```
 
 We can use a simple decision tree to help visualize feature importance.
@@ -302,6 +305,31 @@ We can use a simple decision tree to help visualize feature importance.
 ```{r echo=FALSE}
 dt_m <- caret::train(TARGET_WINS ~ ., data = clean_df, tuneLength = 19L, method = 'rpart2')
 rpart.plot(dt_m$finalModel, type = 1L)
+```
+
+We can also explicitly call out our variable importance using the Caret package which will determine our feature importance for each of the multiple linear regression models individually.
+
+```{r echo=FALSE}
+
+VarImpPlot<-function(LINEARMODEL){
+  varImp(LINEARMODEL) %>% as.data.frame() %>% 
+    ggplot(aes(x = reorder(rownames(.),desc(Overall)), y = Overall))+
+    geom_col(aes(fill = Overall))+
+    theme(panel.background = element_blank(),
+          panel.grid = element_blank(),
+          axis.text.x = element_text(angle = 90))+
+    scale_fill_gradient()+
+    labs(title = "LM Variable Importance",
+         x = "Parameter",
+         y = "Relative Importance")
+}
+VarImpPlot(multi_lm)
+
+
+```
+Comparing our above model to the reduced model below we can see we maintained the important predictors and the relative strength remains comparable.
+```{r echo=FALSE}
+VarImpPlot(mult_lm_final)
 ```
 
 
@@ -318,6 +346,26 @@ mean squared error, (b) R2, (c) F-statistic, and (d) residual plots. Make predic
 - B
 
 ## Appendix
+
+### A. Moneyball Dataset Columns
+
+* INDEX: Identification Variable(Do not use)
+* TARGET_WINS: Number of wins
+* TEAM_BATTING_H : Base Hits by batters (1B,2B,3B,HR)
+* TEAM_BATTING_2B: Doubles by batters (2B)
+* TEAM_BATTING_3B: Triples by batters (3B)
+* TEAM_BATTING_HR: Home runs by batters (4B)
+* TEAM_BATTING_BB: Walks by batters
+* TEAM_BATTING_HBP: Batters hit by pitch (get a free base)
+* TEAM_BATTING_SO: Strikeouts by batters
+* TEAM_BASERUN_SB: Stolen bases
+* TEAM_BASERUN_CS: Caught stealing
+* TEAM_FIELDING_E: Errors
+* TEAM_FIELDING_DP: Double Plays
+* TEAM_PITCHING_BB: Walks allowed
+* TEAM_PITCHING_H: Hits allowed
+* TEAM_PITCHING_HR: Homeruns allowed
+* TEAM_PITCHING_SO: Strikeouts by pitchers
 
 ### R Code
 
