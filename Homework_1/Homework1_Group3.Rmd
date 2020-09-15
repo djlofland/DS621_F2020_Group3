@@ -258,7 +258,7 @@ df_temp <- data.frame(matrix(ncol = 1, nrow = length(clean_df$TARGET_WINS)))
 # performed boxcox transformation after identifying proper lambda
 df_temp$BATTING_3B <- clean_df$BATTING_3B
 batting3b_lambda <- BoxCox.lambda(clean_df$BATTING_3B)
-df_temp$BATTING_3B_transform <- log(BoxCox(clean_df$BATTING_3B, batting3b_lambda))
+df_temp$BATTING_3B_transform <- log(clean_df$BATTING_3B)
 
 # performed boxcox transformation after identifying proper lambda
 df_temp$BATTING_HR <- clean_df$BATTING_HR
