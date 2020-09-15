@@ -38,10 +38,10 @@ library(GGally)
 library(corrplot)
 library(RColorBrewer)
 library(tibble)
-library(dplyr)
 library(tidyr)
 library(tidyverse)
-
+library(dplyr)
+library(reshape2)
 ```
 
 ## Overview
@@ -62,7 +62,7 @@ You should have your own thoughts on what to tell the boss. These are just ideas
 
 #### Columns
 
-Descriptive text ... Lorem ipsum dolor sit amet, consectetur adipiscing elit. Fusce ut augue pharetra, luctus lectus ut, rutrum quam. Aenean quis tellus ac felis accumsan pellentesque id ut purus. Fusce eget ligula eu est congue aliquet. Vivamus hendrerit felis varius lorem suscipit venenatis. Fusce facilisis arcu ac lorem cursus, non pretium velit finibus. Suspendisse eu nulla tellus. Nunc viverra elementum dolor, ut scelerisque nisl. Ut iaculis faucibus ultricies. Praesent fermentum eu libero et consequat. Phasellus vitae euismod lectus, a ultrices dui. Nunc vel leo rhoncus, cursus elit quis, rhoncus nisl. Aenean id urna et nibh tempor iaculis nec non quam. In tincidunt luctus ex eget viverra.
+Below, we created a chart that describes each variable in the dataset and the theoretical effect it will have on the number of wins projected for a team.
 
 ```{r load_data, echo=FALSE}
 df <- read.csv('datasets/moneyball-training-data.csv')
@@ -74,14 +74,15 @@ names(df) <- names(df) %>% str_replace_all('TEAM_', '')
 
 ![Variables of Interest](./figures/Variables.png)
 
-Lets look at the first few rows to get a sense for the data.
+With the variables defined, we thought it would be helpful to look at the first few rows to get a sense for the data.
 
 ```{r data_head, echo=FALSE} 
 # Display firt few row of raw data set
-kable(df[1:5,])
+kable(df[1:5,]) %>% 
+  kable_styling(bootstrap_options = "basic")
 ```
 
-*Note we will drop the INDEX column as it offers no information towards predictive models.*
+We also decided to drop the INDEX column as it offers no information towards predictive models.
 
 ```{r echo=FALSE}
 # Drop the INDEX column - this won't be useful
@@ -94,10 +95,11 @@ df <- df %>% dplyr::select(-INDEX)
 # Display row and column counts
 c(nrow(df), ncol(df))
 ```
+With the INDEX column dropped, we can see that there are 2276 total rows, and 16 columns/variables in our dataset.  
 
 #### Summary Stats
 
-Descriptive text ... Lorem ipsum dolor sit amet, consectetur adipiscing elit. Fusce ut augue pharetra, luctus lectus ut, rutrum quam. Aenean quis tellus ac felis accumsan pellentesque id ut purus. Fusce eget ligula eu est congue aliquet. Vivamus hendrerit felis varius lorem suscipit venenatis. Fusce facilisis arcu ac lorem cursus, non pretium velit finibus. Suspendisse eu nulla tellus. Nunc viverra elementum dolor, ut scelerisque nisl. Ut iaculis faucibus ultricies. Praesent fermentum eu libero et consequat. Phasellus vitae euismod lectus, a ultrices dui. Nunc vel leo rhoncus, cursus elit quis, rhoncus nisl. Aenean id urna et nibh tempor iaculis nec non quam. In tincidunt luctus ex eget viverra.
+Before showing visual plots of each variable, we thought it would be helpful to first generate a summary that provides basic descriptive statistics for each column.
 
 ```{r columns, echo=FALSE}
 summary(df)
@@ -106,7 +108,7 @@ summary(df)
 # col_summary <- gather_df %>% group_by(variable) %>% summarise(count = n(), mean = mean(value), med = median(value), sd = sd(value), min = min(value), max = max(value)) %>% as.data.frame()
 # kableExtra::kable(col_summary)
 ```
-
+We will go into more detail later, but we can quickly see that the average wins per season for a team is about 81, which is exactly half of the total games played in a typical MLB season. Additionally, batters hit, on average, about 9 base hits per game, pitchers throw about 4 base-on-balls (walks) per game, and pitchers record about 5 strikeouts per game, when calculated out over a 162-game season.
 
 #### Distributions
 
@@ -157,7 +159,7 @@ The plots also reveal significant issues with the data. First, there are many da
 
 There is a team with 0 wins in the dataset. This seems unlikely. Many of the hitting categories include teams at 0; it is unlikely that a team hit 0 home runs over the course of a season.
 
-The pitching variables also include many 0's, for instance there are multiple teams with 0 strikeouts by their pitchers over the season which is extremely unlikely. The pitching data also includes strange outliers such as a team loggin 20000 strikeouts, that would be an average of 160 strikeouts per game which is impossible. Also team pitching walks and team pitching hits have strange outliers.
+The pitching variables also include many 0's, for instance there are multiple teams with 0 strikeouts by their pitchers over the season which is extremely unlikely. The pitching data also includes strange outliers such as a team logging 20,000 strikeouts, that would be an average of 160 strikeouts per game which is impossible. Also team pitching walks and team pitching hits have strange outliers.
 
 Lastly, the error variable makes no sense to me. From my experience watching baseball, teams usually score 2 or less errors per game, which would lead to an overall team error of approximately 320 over the course of a season, which does not match the scale of the error variable.
 
@@ -206,7 +208,7 @@ gather_clean_df <- clean_df %>% gather(key = 'variable', value = 'value', -TARGE
 stack(sort(cor(clean_df[,1], clean_df[,2:ncol(clean_df)])[,], decreasing=TRUE))
 ```
 
-When evaluating features for including in models, we will want to choose those with stronger positive or negaive correlations.  Features with correlations closer to zero will probably not provide any meaning information on explaining wins by a team.
+When evaluating features for including in models, we will want to choose those with stronger positive or negative correlations.  Features with correlations closer to zero will probably not provide any meaningful information on explaining wins by a team.
 
 #### Pairplot
 
@@ -226,7 +228,7 @@ palette = colorRampPalette(c("green", "white", "red"))(20)
 heatmap(x = correlation, col = palette, symm = T)
 ```
 
-When we start considering features for our models, we'll need to account for the correlations between features and avoid including pairs with strng correlations.
+When we start considering features for our models, we'll need to account for the correlations between features and avoid including pairs with strong correlations.
 
 ## 2. Data Preparation
 
@@ -240,13 +242,60 @@ Missing values found in BASERUN_CS (Caught Stolen Bases), FIELDING_DP (Double pl
 
 ### Outliers
 
-There are unreasonable outliers found in PITCHING_SO (pitching strikeouts), PITCHIN_H (allowed hits per game), PITCHING_BB (walks), and  FIELDING_E (fielding errors) that exceed what is reasonable or possible given standard game length.  While specific games might have outliers (e.g. in a game with extra innings), we wouldn't expect the totals per season to allow for outliers in every game.  Given this, we will replace any outliers with the median fro the data set.  Limits we set included: > 4000 PITCHING_SO (25 striekouts per game), > 5000 PITCHING_H (30 hits allowed per game), > 2000 PITCHING_BB (13 walks per game) and > 480 FIELDING_E (3 errors per game).
+There are unreasonable outliers found in PITCHING_SO (pitching strikeouts), PITCHIN_H (allowed hits per game), PITCHING_BB (walks), and  FIELDING_E (fielding errors) that exceed what is reasonable or possible given standard game length.  While specific games might have outliers (e.g. in a game with extra innings), we wouldn't expect the totals per season to allow for outliers in every game.  Given this, we will replace any outliers with the median for the data set. Limits we set included: > 4000 PITCHING_SO (25 striekouts per game), > 5000 PITCHING_H (30 hits allowed per game), > 2000 PITCHING_BB (13 walks per game) and > 480 FIELDING_E (3 errors per game).
 
-### Transform non-normal
+### Transform non-normal variables
 
-```{R echo=FALSE}
+From our plots above, we can see that some of our variables are highly skewed. To address this, we decided to perform some tranformations to make them more normally distributed. Here are some plots to demonstrate the changes in distributions before and after the transformations:  
+
+```{r echo=FALSE, fig.height=12, fig.width=10, message=FALSE, warning=FALSE}
 # TODO - Transform skewed data here.  Need to save off any parameters for applying against evaluation dataset.
 
+
+# created empty data frame to store transformed variables
+df_temp <- data.frame(matrix(ncol = 1, nrow = length(clean_df$TARGET_WINS)))
+
+# performed boxcox transformation after identifying proper lambda
+df_temp$BATTING_3B <- clean_df$BATTING_3B
+batting3b_lambda <- BoxCox.lambda(clean_df$BATTING_3B)
+df_temp$BATTING_3B_transform <- log(BoxCox(clean_df$BATTING_3B, batting3b_lambda))
+
+# performed boxcox transformation after identifying proper lambda
+df_temp$BATTING_HR <- clean_df$BATTING_HR
+battingHR_lambda <- BoxCox.lambda(clean_df$BATTING_HR)
+df_temp$BATTING_HR_transform <- BoxCox(clean_df$BATTING_HR, battingHR_lambda)
+
+# performed a log transformation
+df_temp$PITCHING_BB <- clean_df$PITCHING_BB
+df_temp$PITCHING_BB_transform <- log(clean_df$PITCHING_BB)
+
+# performed a log transformation
+df_temp$PITCHING_SO <- clean_df$PITCHING_SO
+df_temp$PITCHING_SO_transform <- log(clean_df$PITCHING_SO)
+
+# performed an inverse log transformation
+df_temp$FIELDING_E <- clean_df$FIELDING_E
+df_temp$FIELDING_E_transform <- 1/log(clean_df$FIELDING_E)
+
+# performed a log transformation
+df_temp$BASERUN_SB <- clean_df$BASERUN_SB
+df_temp$BASERUN_SB_transform <- log(clean_df$BASERUN_SB)
+
+df_temp <- df_temp[, 2:13]
+
+histbox <- function(df, box) {
+    par(mfrow = box)
+    ndf <- dimnames(df)[[2]]
+    for (i in seq_along(ndf)) {
+            data <- na.omit(unlist(df[, i]))
+            hist(data, breaks = "fd", main = paste("Histogram of", ndf[i]),
+                 xlab = ndf[i], freq = FALSE)
+            lines(density(data, kernel = "ep"), col = 'red')
+    }
+    par(mfrow = c(1, 1))
+}
+
+histbox(df_temp, c(6, 2))
 ```
 
 
@@ -283,8 +332,10 @@ residPlot <- function(model) {
   par(mfrow = c(1, 1))
 
 }
+```
 
-
+### Model 1
+```{r echo=FALSE}
 multi_lm <- lm(TARGET_WINS ~ ., clean_df)
 (lm_s <- summary(multi_lm))
 confint(multi_lm)
@@ -295,9 +346,6 @@ mult_lm_final <- stepAIC(multi_lm, direction = "both",
                          scale = 0, trace = FALSE)
 (lmf_s <- summary(mult_lm_final))
 residPlot(lmf_s)
-
-
-
 ```
 
 We can use a simple decision tree to help visualize feature importance.
@@ -331,6 +379,53 @@ Comparing our above model to the reduced model below we can see we maintained th
 ```{r echo=FALSE}
 VarImpPlot(mult_lm_final)
 ```
+
+
+### Model 2
+
+In our second model, we decided to utilize some of our transformed variables to compare against our initial model. As a result of the transformations, there were just a few values that needed to be imputed -- we imputed using the mean value for the given variable.
+```{r echo=FALSE}
+clean_trans_df <- data.frame(cbind(TARGET_WINS = clean_df$TARGET_WINS, 
+                        BATTING_H = clean_df$BATTING_H,
+                        BATTING_2B = clean_df$BATTING_2B,
+                        BATTING_3B_transform = df_temp$BATTING_3B_transform,
+                        BATTING_HR_transform = df_temp$BATTING_HR_transform,
+                        BATTING_BB = clean_df$BATTING_BB,
+                        BATTING_SO = clean_df$BATTING_SO,
+                        BASERUN_SB_transform = df_temp$BASERUN_SB_transform,
+                        BASERUN_CS = clean_df$BASERUN_CS,
+                        PITCHING_H = clean_df$PITCHING_H,
+                        PITCHING_HR = clean_df$PITCHING_HR,
+                        PITCHING_BB_transform = df_temp$PITCHING_BB_transform,
+                        PITCHING_SO_transform = df_temp$PITCHING_SO_transform,
+                        FIELDING_E_transform = df_temp$FIELDING_E_transform,
+                        FIELDING_DP = clean_df$FIELDING_DP))
+
+is.na(clean_trans_df)<-sapply(clean_trans_df, is.infinite)
+
+mean = mean(clean_trans_df$BATTING_3B_transform, na.rm = TRUE)
+mean2 = mean(clean_trans_df$BASERUN_SB_transform, na.rm = TRUE)
+mean3 = mean(clean_trans_df$PITCHING_SO_transform, na.rm = TRUE)
+
+clean_trans_df$BATTING_3B_transform[is.na(clean_trans_df$BATTING_3B_transform)] <- mean
+clean_trans_df$BASERUN_SB_transform[is.na(clean_trans_df$BASERUN_SB_transform)] <- mean2
+clean_trans_df$PITCHING_SO_transform[is.na(clean_trans_df$PITCHING_SO_transform)] <- mean3
+```
+
+Then, similar to model 1, we used Stepwise selection to determine feature importance and select the simplest model possible.
+```{r echo=FALSE}
+multi_lm_2 <- lm(TARGET_WINS ~ ., clean_trans_df)
+(lm_s_2 <- summary(multi_lm_2))
+confint(multi_lm_2)
+residPlot(lm_s_2)
+
+mult_lm_final_2 <- stepAIC(multi_lm_2, direction = "both",
+                         scope = list(upper = multi_lm_2, lower = ~ 1),
+                         scale = 0, trace = FALSE)
+(lmf_s_2 <- summary(mult_lm_final_2))
+residPlot(lmf_s_2)
+```
+
 
 
 ## 4. Select Models
