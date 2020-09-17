@@ -359,7 +359,7 @@ We can also explicitly call out our variable importance using the Caret package 
 
 ```{r echo=FALSE}
 
-VarImpPlot<-function(LINEARMODEL){
+VarImpPlot<-function(LINEARMODEL,TITLE){
   varImp(LINEARMODEL) %>% as.data.frame() %>% 
     ggplot(aes(x = reorder(rownames(.),desc(Overall)), y = Overall))+
     geom_col(aes(fill = Overall))+
@@ -367,17 +367,18 @@ VarImpPlot<-function(LINEARMODEL){
           panel.grid = element_blank(),
           axis.text.x = element_text(angle = 90))+
     scale_fill_gradient()+
-    labs(title = "LM Variable Importance",
+    labs(title = TITLE,
          x = "Parameter",
          y = "Relative Importance")
 }
-VarImpPlot(multi_lm)
+
 
 
 ```
-Comparing our above model to the reduced model below we can see we maintained the important predictors and the relative strength remains comparable.
+
+
 ```{r echo=FALSE}
-VarImpPlot(mult_lm_final)
+VarImpPlot(mult_lm_final, "Model 1 LM Variable Importance")
 ```
 
 
@@ -426,7 +427,11 @@ mult_lm_final_2 <- stepAIC(multi_lm_2, direction = "both",
 residPlot(lmf_s_2)
 ```
 
+We can assess variable importance of our model with our original dataset (model 1) to our transformed dataset (model 2) as shown below. We notice that "Batting_BB" and "Batting_H" are much closer together in terms of weight in predicting target_wins than in model 1 (pre-transformed)
 
+```{r echo=FALSE}
+VarImpPlot(mult_lm_final_2, "Model 2 LM Variable Importance")
+```
 
 ## 4. Select Models
 
