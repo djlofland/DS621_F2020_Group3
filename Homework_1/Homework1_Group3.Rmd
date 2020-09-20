@@ -1,5 +1,5 @@
 ---
-title: 'DS 621: Homwork 1 (Group3)'
+title: 'DS 621: Homework 1 (Group3)'
 subtitle: 'Homework 1 Description'
 author: 'Zach Alexander, Sam Bellows, Donny Lofland, Joshua Registe, Neil Shah, Aaron Zalki'
 data: '09/02/2020'
@@ -46,7 +46,7 @@ library(reshape2)
 
 ## Overview
 
-In professional sports, there is a huge interest in attempting to leverage historic statistics to both predict future outcomes (wins/losses) and explore opportunities for tuning or improving a team or individual's performance.  This data-driven approach to sports has gained a large following over the last decade and entered mass media in the form of fantasy leagues, movies (e.g. Moneyball), and websites/podcasts (e.g. FiveThirtyEight).  In this analysis, we will be using a classic baseball data set with the goal to build several different models capable of predicting team wins over a season given on other team stats during that season (i.e. homeruns, strikeouts, base hits, etc).  The data set containing approximately 2200 records, representing professional baseball team statistics from the years 1871 to 2006 inclusive and each record has the performance of the team for the given year, with all of the statistics adjusted to match the performance of a 162 game season.  
+In professional sports, there is a huge interest in attempting to leverage historic statistics to both predict future outcomes (wins/losses) and explore opportunities for tuning or improving a team or individual's performance.  This data-driven approach to sports has gained a large following over the last decade and entered mass media in the form of fantasy leagues, movies (e.g. Moneyball), and websites/podcasts (e.g. FiveThirtyEight).  In this analysis, we will be using a classic baseball data set with the goal to build several different models capable of predicting team wins over a season given on other team stats during that season (i.e. homeruns, strikeouts, base hits, etc).  
 
 We will first explore the data looking for issues or challenges (i.e. missing data, outliers, possible coding errors, multicollinearlity, etc).  Once we have a handle on the data, we will apply any necessary cleaning steps.  Once we have a reasonable dataset to work with, we will build and evaluate three different linear models that predict seasonal wins.  Our dataset includes both training data and evaluation data - we will training using the main training data, then evaluate models based on how well they perform against the holdout evaluation data.  Finally we will select a final model that offers the best compromise for accuracy and simplicity. 
 
@@ -60,7 +60,7 @@ You should have your own thoughts on what to tell the boss. These are just ideas
 
 ### Dataset
 
-#### Columns
+The moneyball training set contains 17 columns--with one column our target variable "TARGET_WINS" and 2276 rows, covering baseball team performance statistics from the years 1871 to 2006 inclusive. The data has been adjusted to match the performance of a typical 162 game season. The data-set was entirely numerical and contained no categorical variables.
 
 Below, we created a chart that describes each variable in the dataset and the theoretical effect it will have on the number of wins projected for a team.
 
@@ -74,32 +74,19 @@ names(df) <- names(df) %>% str_replace_all('TEAM_', '')
 
 ![Variables of Interest](./figures/Variables.png)
 
-With the variables defined, we thought it would be helpful to look at the first few rows to get a sense for the data.
 
-```{r data_head, echo=FALSE} 
-# Display firt few row of raw data set
-kable(df[1:5,]) %>% 
-  kable_styling(bootstrap_options = "basic")
-```
-
-We also decided to drop the INDEX column as it offers no information towards predictive models.
+Given that the Index column had no impact on the target variable, number of wins, it was dropped. 
 
 ```{r echo=FALSE}
 # Drop the INDEX column - this won't be useful
 df <- df %>% dplyr::select(-INDEX)
 ```
 
-#### Dimensions
 
-```{r echo=FALSE}
-# Display row and column counts
-c(nrow(df), ncol(df))
-```
-With the INDEX column dropped, we can see that there are 2276 total rows, and 16 columns/variables in our dataset.  
+### Summary Stats
 
-#### Summary Stats
+We compiled summary statistics on our data set to better understand the data before modeling. 
 
-Before showing visual plots of each variable, we thought it would be helpful to first generate a summary that provides basic descriptive statistics for each column.
 
 ```{r columns, echo=FALSE}
 summary(df)
@@ -108,26 +95,14 @@ summary(df)
 # col_summary <- gather_df %>% group_by(variable) %>% summarise(count = n(), mean = mean(value), med = median(value), sd = sd(value), min = min(value), max = max(value)) %>% as.data.frame()
 # kableExtra::kable(col_summary)
 ```
-We will go into more detail later, but we can quickly see that the average wins per season for a team is about 81, which is exactly half of the total games played in a typical MLB season. Additionally, batters hit, on average, about 9 base hits per game, pitchers throw about 4 base-on-balls (walks) per game, and pitchers record about 5 strikeouts per game, when calculated out over a 162-game season.
 
-#### Distributions
+The first observation is the prevalance of NA's throughout the dataset. On a cursory view, we can quickly see that the average wins per season for a team is about 81, which is exactly half of the total games played in a typical MLB season. Additionally, batters hit, on average, about 9 base hits per game, pitchers throw about 4 base-on-balls (walks) per game, and pitchers record about 5 strikeouts per game, when calculated out over a 162-game season.
 
-```{r echo=FALSE, fig.height=12, fig.width=10}
 
-histbox <- function(df, box) {
-    par(mfrow = box)
-    ndf <- dimnames(df)[[2]] # Thanks for nothing, scale!!
-    for (i in seq_along(ndf)) {
-        data <- na.omit(unlist(df[, i]))
-        hist(data, breaks = "fd", main = paste("Histogram of", ndf[i]),
-             xlab = ndf[i], freq = FALSE)
-        lines(density(data, kernel = "ep"), col = 'blue')
-    }
-    par(mfrow = c(1, 1))
-}
+### Distributions
 
-histbox(df, c(4, 4))
-```
+Next, we wanted to get an idea of the distribution profiles for each of the variables. 
+
 
 ```{r, fig.height = 10, fig.width = 10, echo=FALSE}
 # Prepare data for ggplot
@@ -138,32 +113,46 @@ ggplot(gather_df) +
   geom_histogram(aes(x=value, y = ..density..), bins=30) + 
   geom_density(aes(x=value), color='blue') +
   facet_wrap(. ~variable, scales='free', ncol=4)
+```
 
+The distribution profiles sure the prevalance of kurtosis, specifically right skewness in variables BASERUN_CS, BASERUN_CB, FIELDING_E, PITCHING_RB, PITCHING_H and PITCHING_SO. Furthermore BATTING_HBP, BATTING_HR, PITCHING_HR and BATTING_SO appear bimodal. These deviations from a traditional normal distribution can be problematic for linear regression assumptions, and thus we might need to transform the data.
+
+### Boxplots
+
+We elected to use box-plots to get an idea of the spread of each variable. 
+
+```{r, fig.height = 10, fig.width = 10, echo=FALSE}
+# Prepare data for ggplot
+gather_df <- df %>% gather(key = 'variable', value = 'value')
 # Boxplots for each variable
 ggplot(gather_df, aes(variable, value)) + 
   geom_boxplot() + 
   facet_wrap(. ~variable, scales='free', ncol=6)
 ```
 
-Looking at both the histograms and boxplots, we notice that many of the features are NOT normally distributed (a concern for linear regressions), there are a significant number of outliers that we will have to consider, and we see a large number of zero values for some features.  For zero values and outliers, we will want to qualitatively assess whether those make sense and whether we need to transform them in some way.
+The box-plots reveal significant outliers and uniform (zero-only) values for many of our predictor variables. Outliers will need to imputed if necessary, and sparse data-sets might need to be dropped. 
 
-#### Variable Plots
+### Variable Plots
+
+Finally, we wanted to plot scatter plots of each variable versus the target variable, TARGET_WINS, to get an idea of the relationship between them. 
 
 ```{r, fig.height = 10, fig.width = 10, echo=FALSE}
 featurePlot(df[,2:ncol(df)], df[,1], pch = 20)
 ```
 
-Here we plot every variable against the target variable number of wins to get a feeling for which variables may be predictive of wins. The plots indicate some clear relationships, such as hitting more doubles or more home runs clearly improves the number of wins.
+The plots indicate some clear relationships, such as hitting more doubles or more home runs clearly improves the number of wins.
 
-The plots also reveal significant issues with the data. First, there are many data points that contain missing data that will need to be either imputed or discarded. Second, it appears we have some missing data encoded as 0 and some nonsensical outliers.
+
+Overall our collection of plots also reveal significant issues with the data. 
+Most of the predictor variables are skewed or non-normally distributed, and wlll need to be transformed. There are many data points that contain missing data that will need to be either imputed or discarded. Finally it appears we have some missing data encoded as 0 and some nonsensical outliers.
 
 There is a team with 0 wins in the dataset. This seems unlikely. Many of the hitting categories include teams at 0; it is unlikely that a team hit 0 home runs over the course of a season.
 
 The pitching variables also include many 0's, for instance there are multiple teams with 0 strikeouts by their pitchers over the season which is extremely unlikely. The pitching data also includes strange outliers such as a team logging 20,000 strikeouts, that would be an average of 160 strikeouts per game which is impossible. Also team pitching walks and team pitching hits have strange outliers.
 
-Lastly, the error variable makes no sense to me. From my experience watching baseball, teams usually score 2 or less errors per game, which would lead to an overall team error of approximately 320 over the course of a season, which does not match the scale of the error variable.
+Lastly, the error variable makes little sense. From my experience watching baseball, teams usually score 2 or less errors per game, which would lead to an overall team error of approximately 320 over the course of a season, which does not match the scale of the error variable.
 
-#### Missing Data
+### Missing Data
 
 When we initially viewed the first few rows of the raw data, we already noticed missing data.  Let's assess which fields have missing data.
 
@@ -202,30 +191,25 @@ clean_df <- clean_df %>% filter(TARGET_WINS != 0)
 gather_clean_df <- clean_df %>% gather(key = 'variable', value = 'value', -TARGET_WINS)
 ```
 
-#### Feature-Target Correlations
+### Feature-Target Correlations
+
+Building off the scatter plots, we wanted to quantify the correlations between our target variable and predictor variable. We will want to choose those with stronger positive or negative correlations.  Features with correlations closer to zero will probably not provide any meaningful information on explaining wins by a team.
 
 ```{r echo=FALSE}
 stack(sort(cor(clean_df[,1], clean_df[,2:ncol(clean_df)])[,], decreasing=TRUE))
 ```
 
-When evaluating features for including in models, we will want to choose those with stronger positive or negative correlations.  Features with correlations closer to zero will probably not provide any meaningful information on explaining wins by a team.
+BATTING_H and BATTING_2B have the highest correlation (positive) with TOTAL_WINs; this makes sense given that more hits means more points/runs, and thus liklihood to win the game. The other variables have weak or slightly negative corelation, which can imply they might have little predictive power.
 
-#### Pairplot
+### Multicolinearlity
 
-```{r, fig.height = 10, fig.width = 10, echo=FALSE}
-clean_df %>% ggpairs(columns = 2:ncol(clean_df), progress = FALSE)
-```
-
-#### Multicolinearlity
+One problem that can occur with multi-variable regression is correlation between variables, or multicolinearity. A quick check is to run correlations between variables.   
 
 ```{r echo=FALSE}
 correlation = cor(clean_df, use = 'pairwise.complete.obs')
 
 corrplot(correlation, 'ellipse', type = 'lower', order = 'hclust',
          col=brewer.pal(n=8, name="RdYlBu"))
-
-palette = colorRampPalette(c("green", "white", "red"))(20)
-heatmap(x = correlation, col = palette, symm = T)
 ```
 
 When we start considering features for our models, we'll need to account for the correlations between features and avoid including pairs with strong correlations.
@@ -442,8 +426,8 @@ mean squared error, (b) R2, (c) F-statistic, and (d) residual plots. Make predic
 
 ## References
 
-- A
-- B
+- A Modern Approach to Regression with R: Simon Sheather
+- Linear Models with R: Julian Faraway. 
 
 ## Appendix
 
@@ -468,6 +452,8 @@ mean squared error, (b) R2, (c) F-statistic, and (d) residual plots. Make predic
 * TEAM_PITCHING_SO: Strikeouts by pitchers
 
 ### R Code
+
+
 
 ```{r appendix, echo=TRUE}
 
