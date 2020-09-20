@@ -43,6 +43,25 @@ library(tidyverse)
 library(dplyr)
 library(reshape2)
 library(mixtools)
+
+#' Print a side-by-side Histogram and QQPlot of Residuals
+#'
+#' @param model A model
+#' @examples
+#' residPlot(myModel)
+#' @return null
+#' @export
+residPlot <- function(model) {
+  layout(matrix(c(1,1,2,3), 2, 2, byrow = TRUE))
+  plot(residuals(model))
+  hist(model[["residuals"]], freq = FALSE, breaks = "fd", main = "Residual Histogram",
+       xlab = "Residuals",col="lightgreen")
+  lines(density(model[["residuals"]], kernel = "ep"),col="blue", lwd=3)
+  curve(dnorm(x,mean=mean(model[["residuals"]]), sd=sd(model[["residuals"]])), col="red", lwd=3, lty="dotted", add=T)
+  qqnorm(model[["residuals"]], main = "Residual Q-Q plot")
+  qqline(model[["residuals"]],col="red", lwd=3, lty="dotted")
+  par(mfrow = c(1, 1))
+}
 ```
 
 ## Overview
@@ -66,6 +85,7 @@ The moneyball training set contains 17 columns--with one column our target varia
 Below, we created a chart that describes each variable in the dataset and the theoretical effect it will have on the number of wins projected for a team.
 
 ```{r load_data, echo=FALSE}
+# Load Moneyball baseball dataset
 df <- read.csv('datasets/moneyball-training-data.csv')
 df_eval <- read.csv('datasets/moneyball-evaluation-data.csv')
 
@@ -90,6 +110,7 @@ We compiled summary statistics on our data set to better understand the data bef
 
 
 ```{r columns, echo=FALSE}
+# Display summary statistics
 summary(df)
 
 # gather_df <- df %>% gather(key = 'variable', value = 'value', -TARGET_WINS)
@@ -168,6 +189,7 @@ The box-plots reveal significant outliers and uniform (zero-only) values for man
 Finally, we wanted to plot scatter plots of each variable versus the target variable, TARGET_WINS, to get an idea of the relationship between them. 
 
 ```{r, fig.height = 10, fig.width = 10, echo=FALSE}
+# Plot scatter plots of each variable versus the target variable
 featurePlot(df[,2:ncol(df)], df[,1], pch = 20)
 ```
 
@@ -188,6 +210,7 @@ Lastly, the error variable makes little sense. From my experience watching baseb
 When we initially viewed the first few rows of the raw data, we already noticed missing data.  Let's assess which fields have missing data.
 
 ```{r echo=FALSE} 
+# Identify missing data by Feature and display percent breakout
 missing <- colSums(df %>% sapply(is.na))
 missing_pct <- round(missing / nrow(df) * 100, 2)
 stack(sort(missing_pct, decreasing = TRUE))
@@ -227,16 +250,18 @@ gather_clean_df <- clean_df %>% gather(key = 'variable', value = 'value', -TARGE
 Building off the scatter plots, we wanted to quantify the correlations between our target variable and predictor variable. We will want to choose those with stronger positive or negative correlations.  Features with correlations closer to zero will probably not provide any meaningful information on explaining wins by a team.
 
 ```{r echo=FALSE}
+# Show feature correlations/target by decreasing correlation
 stack(sort(cor(clean_df[,1], clean_df[,2:ncol(clean_df)])[,], decreasing=TRUE))
 ```
 
-BATTING_H and BATTING_2B have the highest correlation (positive) with TOTAL_WINs; this makes sense given that more hits means more points/runs, and thus liklihood to win the game. The other variables have weak or slightly negative corelation, which can imply they might have little predictive power.
+BATTING_H and BATTING_2B have the highest correlation (positive) with TOTAL_WINs; this makes sense given that more hits means more points/runs, and thus likelihood to win the game. The other variables have weak or slightly negative correlation, which can imply they might have little predictive power.
 
-### Multicolinearlity
+### Multicolinearity
 
 One problem that can occur with multi-variable regression is correlation between variables, or multicolinearity. A quick check is to run correlations between variables.   
 
 ```{r echo=FALSE}
+# Calculate and plot the Multicolinearity
 correlation = cor(clean_df, use = 'pairwise.complete.obs')
 
 corrplot(correlation, 'ellipse', type = 'lower', order = 'hclust',
@@ -257,15 +282,13 @@ Missing values found in BASERUN_CS (Caught Stolen Bases), FIELDING_DP (Double pl
 
 ### Outliers
 
-There are unreasonable outliers found in PITCHING_SO (pitching strikeouts), PITCHIN_H (allowed hits per game), PITCHING_BB (walks), and  FIELDING_E (fielding errors) that exceed what is reasonable or possible given standard game length.  While specific games might have outliers (e.g. in a game with extra innings), we wouldn't expect the totals per season to allow for outliers in every game.  Given this, we will replace any outliers with the median for the data set. Limits we set included: > 4000 PITCHING_SO (25 striekouts per game), > 5000 PITCHING_H (30 hits allowed per game), > 2000 PITCHING_BB (13 walks per game) and > 480 FIELDING_E (3 errors per game).
+There are unreasonable outliers found in PITCHING_SO (pitching strikeouts), PITCHIN_H (allowed hits per game), PITCHING_BB (walks), and  FIELDING_E (fielding errors) that exceed what is reasonable or possible given standard game length.  While specific games might have outliers (e.g. in a game with extra innings), we wouldn't expect the totals per season to allow for outliers in every game.  Given this, we will replace any outliers with the median for the data set. Limits we set included: > 4000 PITCHING_SO (25 strikeouts per game), > 5000 PITCHING_H (30 hits allowed per game), > 2000 PITCHING_BB (13 walks per game) and > 480 FIELDING_E (3 errors per game).
 
 ### Transform non-normal variables
 
-From our plots above, we can see that some of our variables are highly skewed. To address this, we decided to perform some tranformations to make them more normally distributed. Here are some plots to demonstrate the changes in distributions before and after the transformations:  
+From our plots above, we can see that some of our variables are highly skewed. To address this, we decided to perform some transformations to make them more normally distributed. Here are some plots to demonstrate the changes in distributions before and after the transformations:  
 
 ```{r echo=FALSE, fig.height=12, fig.width=10, message=FALSE, warning=FALSE}
-# TODO - Transform skewed data here.  Need to save off any parameters for applying against evaluation dataset.
-
 
 # created empty data frame to store transformed variables
 df_temp <- data.frame(matrix(ncol = 1, nrow = length(clean_df$TARGET_WINS)))
@@ -313,7 +336,6 @@ histbox <- function(df, box) {
 histbox(df_temp, c(6, 2))
 ```
 
-
 ## 3. Build Models
 
 Using the training data set, build at least three different multiple linear regression models, using different variables
@@ -327,30 +349,9 @@ would be reasonably expected that such a team would win more games. However, if 
 (suggesting that the team would lose more games), then that needs to be discussed. Are you keeping the model
 even though it is counter intuitive? Why? The boss needs to know.
 
-```{r echo=FALSE}
-#' Print a side-by-side Histogram and QQPlot of Residuals
-#'
-#' @param model A model
-#' @examples
-#' residPlot(myModel)
-#' @return null
-#' @export
-residPlot <- function(model) {
-  layout(matrix(c(1,1,2,3), 2, 2, byrow = TRUE))
-  plot(residuals(model))
-  hist(model[["residuals"]], freq = FALSE, breaks = "fd", main = "Residual Histogram",
-       xlab = "Residuals",col="lightgreen")
-  lines(density(model[["residuals"]], kernel = "ep"),col="blue", lwd=3)
-  curve(dnorm(x,mean=mean(model[["residuals"]]), sd=sd(model[["residuals"]])), col="red", lwd=3, lty="dotted", add=T)
-  qqnorm(model[["residuals"]], main = "Residual Q-Q plot")
-  qqline(model[["residuals"]],col="red", lwd=3, lty="dotted")
-  par(mfrow = c(1, 1))
-
-}
-```
-
 ### Model 1
 ```{r echo=FALSE}
+# Model 1 - Include all features and leverage stepAIC to help identify ideal features
 multi_lm <- lm(TARGET_WINS ~ ., clean_df)
 (lm_s <- summary(multi_lm))
 confint(multi_lm)
@@ -359,13 +360,18 @@ residPlot(lm_s)
 mult_lm_final <- stepAIC(multi_lm, direction = "both",
                          scope = list(upper = multi_lm, lower = ~ 1),
                          scale = 0, trace = FALSE)
+
+# Display Model 1 Summary
 (lmf_s <- summary(mult_lm_final))
+
+# Display Model 1 REsidual plots
 residPlot(lmf_s)
 ```
 
 We can use a simple decision tree to help visualize feature importance.
 
 ```{r echo=FALSE}
+# Model 1 - Simple decision tree for feature importance
 dt_m <- caret::train(TARGET_WINS ~ ., data = clean_df, tuneLength = 19L, method = 'rpart2')
 rpart.plot(dt_m$finalModel, type = 1L)
 ```
@@ -373,7 +379,7 @@ rpart.plot(dt_m$finalModel, type = 1L)
 We can also explicitly call out our variable importance using the Caret package which will determine our feature importance for each of the multiple linear regression models individually.
 
 ```{r echo=FALSE}
-
+# Model 1 - Simple `caret` plot to show feature importance
 VarImpPlot<-function(LINEARMODEL,TITLE){
   varImp(LINEARMODEL) %>% as.data.frame() %>% 
     ggplot(aes(x = reorder(rownames(.),desc(Overall)), y = Overall))+
@@ -386,9 +392,6 @@ VarImpPlot<-function(LINEARMODEL,TITLE){
          x = "Parameter",
          y = "Relative Importance")
 }
-
-
-
 ```
 
 
@@ -401,6 +404,7 @@ VarImpPlot(mult_lm_final, "Model 1 LM Variable Importance")
 
 In our second model, we decided to utilize some of our transformed variables to compare against our initial model. As a result of the transformations, there were just a few values that needed to be imputed -- we imputed using the mean value for the given variable.
 ```{r echo=FALSE}
+# Model 2 - Create data frame with Transformed features
 clean_trans_df <- data.frame(cbind(TARGET_WINS = clean_df$TARGET_WINS, 
                         BATTING_H = clean_df$BATTING_H,
                         BATTING_2B = clean_df$BATTING_2B,
@@ -417,7 +421,7 @@ clean_trans_df <- data.frame(cbind(TARGET_WINS = clean_df$TARGET_WINS,
                         FIELDING_E_transform = df_temp$FIELDING_E_transform,
                         FIELDING_DP = clean_df$FIELDING_DP))
 
-is.na(clean_trans_df)<-sapply(clean_trans_df, is.infinite)
+is.na(clean_trans_df) <- sapply(clean_trans_df, is.infinite)
 
 mean = mean(clean_trans_df$BATTING_3B_transform, na.rm = TRUE)
 mean2 = mean(clean_trans_df$BASERUN_SB_transform, na.rm = TRUE)
@@ -430,21 +434,32 @@ clean_trans_df$PITCHING_SO_transform[is.na(clean_trans_df$PITCHING_SO_transform)
 
 Then, similar to model 1, we used Stepwise selection to determine feature importance and select the simplest model possible.
 ```{r echo=FALSE}
+# Model 2 - Build linear model
 multi_lm_2 <- lm(TARGET_WINS ~ ., clean_trans_df)
+
+# Model 2 - Show model summary info
 (lm_s_2 <- summary(multi_lm_2))
+
+# Model 2 - Show Confidence and Residual Plots
 confint(multi_lm_2)
 residPlot(lm_s_2)
 
+# Model 2 - use stepAIC to select significant features
 mult_lm_final_2 <- stepAIC(multi_lm_2, direction = "both",
                          scope = list(upper = multi_lm_2, lower = ~ 1),
                          scale = 0, trace = FALSE)
+
+# Model 2 - Show summary of revised model with only significant features included
 (lmf_s_2 <- summary(mult_lm_final_2))
+
+# model 2 - Show residual plots
 residPlot(lmf_s_2)
 ```
 
 We can assess variable importance of our model with our original dataset (model 1) to our transformed dataset (model 2) as shown below. We notice that "Batting_BB" and "Batting_H" are much closer together in terms of weight in predicting target_wins than in model 1 (pre-transformed)
 
 ```{r echo=FALSE}
+# Model 2 - Show feature importance in final model after stepAIC
 VarImpPlot(mult_lm_final_2, "Model 2 LM Variable Importance")
 ```
 
@@ -485,11 +500,322 @@ mean squared error, (b) R2, (c) F-statistic, and (d) residual plots. Make predic
 
 ### R Code
 
+```
+# =====================================================================================
+# Load Libraries and Define Helper functions 
+# =====================================================================================
 
+library(MASS)
+library(rpart.plot)
+library(ggplot2)
+library(ggfortify)
+library(gridExtra)
+library(forecast)
+library(fpp2)
+library(fma)
+library(kableExtra)
+library(e1071)
+library(mlbench)
+library(ggcorrplot)
+library(DataExplorer)
+library(timeDate)
+library(caret)
+library(GGally)
+library(corrplot)
+library(RColorBrewer)
+library(tibble)
+library(tidyr)
+library(tidyverse)
+library(dplyr)
+library(reshape2)
+library(mixtools)
 
-```{r appendix, echo=TRUE}
+#' Print a side-by-side Histogram and QQPlot of Residuals
+#'
+#' @param model A model
+#' @examples
+#' residPlot(myModel)
+#' @return null
+#' @export
+residPlot <- function(model) {
+  layout(matrix(c(1,1,2,3), 2, 2, byrow = TRUE))
+  plot(residuals(model))
+  hist(model[["residuals"]], freq = FALSE, breaks = "fd", main = "Residual Histogram",
+       xlab = "Residuals",col="lightgreen")
+  lines(density(model[["residuals"]], kernel = "ep"),col="blue", lwd=3)
+  curve(dnorm(x,mean=mean(model[["residuals"]]), sd=sd(model[["residuals"]])), col="red", lwd=3, lty="dotted", add=T)
+  qqnorm(model[["residuals"]], main = "Residual Q-Q plot")
+  qqline(model[["residuals"]],col="red", lwd=3, lty="dotted")
+  par(mfrow = c(1, 1))
+}
 
-# Show all code here
+# =====================================================================================
+# Load Data set
+# =====================================================================================
+
+# Load Moneyball baseball dataset
+df <- read.csv('datasets/moneyball-training-data.csv')
+df_eval <- read.csv('datasets/moneyball-evaluation-data.csv')
+
+# Remove superfluous TEAM_ from column names
+names(df) <- names(df) %>% str_replace_all('TEAM_', '')
+
+# Drop the INDEX column - this won't be useful
+df <- df %>% dplyr::select(-INDEX)
+
+# =====================================================================================
+# Summary Stats 
+# =====================================================================================
+
+# Display summary statistics
+summary(df)
+
+# =====================================================================================
+# Distributions 
+# =====================================================================================
+
+# Prepare data for ggplot
+gather_df <- df %>% gather(key = 'variable', value = 'value')
+
+# Histogram plots of each variable
+ggplot(gather_df) + 
+  geom_histogram(aes(x=value, y = ..density..), bins=30) + 
+  geom_density(aes(x=value), color='blue') +
+  facet_wrap(. ~variable, scales='free', ncol=4)
+  
+# Select BATTING_SO column and remove any missing data
+df_mix <- df %>% 
+  dplyr::select(BATTING_SO) %>%
+  drop_na()
+
+# Calculate mixed distributions for BATTING_SO
+batting_so_mix <- normalmixEM(df_mix$BATTING_SO, 
+                              lambda = .5, 
+                              mu = c(400, 1200), 
+                              sigma = 5, 
+                              maxit=60)
+
+# Simple plot to illustrate possible bimodal mix of groups
+plot(batting_so_mix, 
+     whichplots = 2,
+     density=TRUE, 
+     main2="BATTING_SO Possible Distributions", 
+     xlab2="BATTING_SO")
+     
+# =====================================================================================
+# Boxplots 
+# =====================================================================================
+
+# Prepare data for ggplot
+gather_df <- df %>% gather(key = 'variable', value = 'value')
+
+# Boxplots for each variable
+ggplot(gather_df, aes(variable, value)) + 
+  geom_boxplot() + 
+  facet_wrap(. ~variable, scales='free', ncol=6)
+
+# =====================================================================================
+# Variable Plots
+# =====================================================================================
+  
+# Plot scatter plots of each variable versus the target variable
+featurePlot(df[,2:ncol(df)], df[,1], pch = 20)
+
+# =====================================================================================
+# Missing Data 
+# =====================================================================================
+
+# Identify missing data by Feature and display percent breakout
+missing <- colSums(df %>% sapply(is.na))
+missing_pct <- round(missing / nrow(df) * 100, 2)
+stack(sort(missing_pct, decreasing = TRUE))
+
+# Drop the BATTING_HBP field
+df <- df %>% select(-BATTING_HBP)
+
+# We have chosen to impute the median as there are strong outliers that may skew the mean. Could revisit for advanced imputation via prediction later.
+no_outlier_df <- df
+
+# 4000 strikeouts is an average of 25 strikeouts per game, which is ridiculous.
+no_outlier_df$PITCHING_SO <- ifelse(no_outlier_df$PITCHING_SO > 4000, NA, no_outlier_df$PITCHING_SO)
+
+# 5000 hits is an average of 30 hits allowed per game, which is also ridiculous.
+no_outlier_df$PITCHING_H <- ifelse(no_outlier_df$PITCHING_H > 5000, NA, no_outlier_df$PITCHING_H)
+
+# 2000 walks is an average of 13 walks per game which is unlikely.
+no_outlier_df$PITCHING_BB <- ifelse(no_outlier_df$PITCHING_BB > 2000, NA, no_outlier_df$PITCHING_BB)
+
+# more than 480 errors is an average of 3 per game which is unlikely.
+no_outlier_df$FIELDING_E <- ifelse(no_outlier_df$FIELDING_E > 480, NA, no_outlier_df$FIELDING_E)
+
+clean_df <- no_outlier_df %>% impute(what = 'median') %>% as.data.frame()
+
+# From the plots, the team with 0 wins has 0 in multiple other categories. I believe this is missing data, not valid data.
+clean_df <- clean_df %>% filter(TARGET_WINS != 0)
+
+gather_clean_df <- clean_df %>% gather(key = 'variable', value = 'value', -TARGET_WINS)
+
+# =====================================================================================
+# Feature-Target Correlations 
+# =====================================================================================
+
+# Show feature correlations/target by decreasing correlation
+stack(sort(cor(clean_df[,1], clean_df[,2:ncol(clean_df)])[,], decreasing=TRUE))
+
+# =====================================================================================
+# Multicolinearity 
+# =====================================================================================
+
+correlation = cor(clean_df, use = 'pairwise.complete.obs')
+
+corrplot(correlation, 'ellipse', type = 'lower', order = 'hclust',
+         col=brewer.pal(n=8, name="RdYlBu"))
+
+# =====================================================================================
+# Transform non-normal variables 
+# =====================================================================================
+         
+# created empty data frame to store transformed variables
+df_temp <- data.frame(matrix(ncol = 1, nrow = length(clean_df$TARGET_WINS)))
+
+# performed boxcox transformation after identifying proper lambda
+df_temp$BATTING_3B <- clean_df$BATTING_3B
+batting3b_lambda <- BoxCox.lambda(clean_df$BATTING_3B)
+df_temp$BATTING_3B_transform <- log(clean_df$BATTING_3B)
+
+# performed boxcox transformation after identifying proper lambda
+df_temp$BATTING_HR <- clean_df$BATTING_HR
+battingHR_lambda <- BoxCox.lambda(clean_df$BATTING_HR)
+df_temp$BATTING_HR_transform <- BoxCox(clean_df$BATTING_HR, battingHR_lambda)
+
+# performed a log transformation
+df_temp$PITCHING_BB <- clean_df$PITCHING_BB
+df_temp$PITCHING_BB_transform <- log(clean_df$PITCHING_BB)
+
+# performed a log transformation
+df_temp$PITCHING_SO <- clean_df$PITCHING_SO
+df_temp$PITCHING_SO_transform <- log(clean_df$PITCHING_SO)
+
+# performed an inverse log transformation
+df_temp$FIELDING_E <- clean_df$FIELDING_E
+df_temp$FIELDING_E_transform <- 1/log(clean_df$FIELDING_E)
+
+# performed a log transformation
+df_temp$BASERUN_SB <- clean_df$BASERUN_SB
+df_temp$BASERUN_SB_transform <- log(clean_df$BASERUN_SB)
+
+df_temp <- df_temp[, 2:13]
+
+histbox <- function(df, box) {
+    par(mfrow = box)
+    ndf <- dimnames(df)[[2]]
+    for (i in seq_along(ndf)) {
+            data <- na.omit(unlist(df[, i]))
+            hist(data, breaks = "fd", main = paste("Histogram of", ndf[i]),
+                 xlab = ndf[i], freq = FALSE)
+            lines(density(data, kernel = "ep"), col = 'red')
+    }
+    par(mfrow = c(1, 1))
+}
+
+histbox(df_temp, c(6, 2))
+
+# =====================================================================================
+# Model 1 (with and without stepAIC)
+# =====================================================================================
+
+# Model 1 - Include all features and leverage stepAIC to help identify ideal features
+multi_lm <- lm(TARGET_WINS ~ ., clean_df)
+(lm_s <- summary(multi_lm))
+confint(multi_lm)
+residPlot(lm_s)
+
+mult_lm_final <- stepAIC(multi_lm, direction = "both",
+                         scope = list(upper = multi_lm, lower = ~ 1),
+                         scale = 0, trace = FALSE)
+
+# Display Model 1 Summary
+(lmf_s <- summary(mult_lm_final))
+
+# Display Model 1 REsidual plots
+residPlot(lmf_s)
+
+# Model 1 - Simple decision tree for feature importance
+dt_m <- caret::train(TARGET_WINS ~ ., data = clean_df, tuneLength = 19L, method = 'rpart2')
+rpart.plot(dt_m$finalModel, type = 1L)
+
+# Model 1 - Simple `caret` plot to show feature importance
+VarImpPlot<-function(LINEARMODEL,TITLE){
+  varImp(LINEARMODEL) %>% as.data.frame() %>% 
+    ggplot(aes(x = reorder(rownames(.),desc(Overall)), y = Overall))+
+    geom_col(aes(fill = Overall))+
+    theme(panel.background = element_blank(),
+          panel.grid = element_blank(),
+          axis.text.x = element_text(angle = 90))+
+    scale_fill_gradient()+
+    labs(title = TITLE,
+         x = "Parameter",
+         y = "Relative Importance")
+}
+
+# =====================================================================================
+# Model 2 (with and without stepAIC)
+# =====================================================================================
+
+# Model 2 - Create data frame with Transformed features
+clean_trans_df <- data.frame(cbind(TARGET_WINS = clean_df$TARGET_WINS, 
+                        BATTING_H = clean_df$BATTING_H,
+                        BATTING_2B = clean_df$BATTING_2B,
+                        BATTING_3B_transform = df_temp$BATTING_3B_transform,
+                        BATTING_HR_transform = df_temp$BATTING_HR_transform,
+                        BATTING_BB = clean_df$BATTING_BB,
+                        BATTING_SO = clean_df$BATTING_SO,
+                        BASERUN_SB_transform = df_temp$BASERUN_SB_transform,
+                        BASERUN_CS = clean_df$BASERUN_CS,
+                        PITCHING_H = clean_df$PITCHING_H,
+                        PITCHING_HR = clean_df$PITCHING_HR,
+                        PITCHING_BB_transform = df_temp$PITCHING_BB_transform,
+                        PITCHING_SO_transform = df_temp$PITCHING_SO_transform,
+                        FIELDING_E_transform = df_temp$FIELDING_E_transform,
+                        FIELDING_DP = clean_df$FIELDING_DP))
+
+is.na(clean_trans_df) <- sapply(clean_trans_df, is.infinite)
+
+mean = mean(clean_trans_df$BATTING_3B_transform, na.rm = TRUE)
+mean2 = mean(clean_trans_df$BASERUN_SB_transform, na.rm = TRUE)
+mean3 = mean(clean_trans_df$PITCHING_SO_transform, na.rm = TRUE)
+
+clean_trans_df$BATTING_3B_transform[is.na(clean_trans_df$BATTING_3B_transform)] <- mean
+clean_trans_df$BASERUN_SB_transform[is.na(clean_trans_df$BASERUN_SB_transform)] <- mean2
+clean_trans_df$PITCHING_SO_transform[is.na(clean_trans_df$PITCHING_SO_transform)] <- mean3
+
+# Model 2 - Build linear model
+multi_lm_2 <- lm(TARGET_WINS ~ ., clean_trans_df)
+
+# Model 2 - Show model summary info
+(lm_s_2 <- summary(multi_lm_2))
+
+# Model 2 - Show Confidence and Residual Plots
+confint(multi_lm_2)
+residPlot(lm_s_2)
+
+# Model 2 - use stepAIC to select significant features
+mult_lm_final_2 <- stepAIC(multi_lm_2, direction = "both",
+                         scope = list(upper = multi_lm_2, lower = ~ 1),
+                         scale = 0, trace = FALSE)
+
+# Model 2 - Show summary of revised model with only significant features included
+(lmf_s_2 <- summary(mult_lm_final_2))
+
+# model 2 - Show residual plots
+residPlot(lmf_s_2)
+
+# Model 2 - Show feature importance in final model after stepAIC
+VarImpPlot(mult_lm_final_2, "Model 2 LM Variable Importance")
+
+# =====================================================================================
+# Select Models
+# =====================================================================================
 
 ```
 
