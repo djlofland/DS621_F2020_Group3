@@ -42,6 +42,7 @@ library(tidyr)
 library(tidyverse)
 library(dplyr)
 library(reshape2)
+library(mixtools)
 ```
 
 ## Overview
@@ -115,7 +116,36 @@ ggplot(gather_df) +
   facet_wrap(. ~variable, scales='free', ncol=4)
 ```
 
-The distribution profiles sure the prevalance of kurtosis, specifically right skewness in variables BASERUN_CS, BASERUN_CB, FIELDING_E, PITCHING_RB, PITCHING_H and PITCHING_SO. Furthermore BATTING_HBP, BATTING_HR, PITCHING_HR and BATTING_SO appear bimodal. These deviations from a traditional normal distribution can be problematic for linear regression assumptions, and thus we might need to transform the data.
+The distribution profiles sure the prevalence of kurtosis, specifically right skew in variables BASERUN_CS, BASERUN_CB, FIELDING_E, PITCHING_RB, PITCHING_H and PITCHING_SO. These deviations from a traditional normal distribution can be problematic for linear regression assumptions, and thus we might need to transform the data.  Furthermore BATTING_HBP, BATTING_HR, PITCHING_HR and BATTING_SO appear bimodal. Bimodal features in a dataset are both problematic and interesting and potentially an area of opportunity and exploration.  Bimodal data suggests that there are possibly two different groups or classes of baseball season data.  During those seasons, teams tended to score higher or lower for the bimodal feature.  Two possibilities immediate come to mind.  The bimodal nature could be caused by a rule change such that games before a specific time point had lower values and games after that point had higher values.  Unfortunately, we do not have any features on which year the data is associated.  The second is that teams either do well or not for the given KPI.  Let's consider BATTING_SO (Batters striking out) - if some teams have better players, they might have a reasonable normal distribution lower than those teams with worse players.  We do know that certain teams are able to attract and pay for better players (let's call them Tier 1) and some teams with lower budgets and less visibility (let's call them Tier 2). Even with a given team, they might have "good years" and "off years".  It's possible the distribution of BATTING_SO represents the overlap or superposition of this two distinct curves representing different classes of team.
+
+While we don't tackle feature engineering in this analysis, if we were performing a more in-depth analysis, these are some possible options.
+
+* We have no data linking rows with specific years.  We might attempt to locate additional data sets that link performance to year and leverage change point detection to see if bimodal relationships are linked with all teams at specific points in time.  If change points are present, that suggests something changed affecting all teams (e.g. new rules that improved or lowered the bimodal feature).  We would then create a new categorical feature indicating which class the row data came from, before or after the change point.
+
+* We have no data lining rows with specific teams so cannot directly tell if there are more than one Tier of team.  Instead, we could explore whether there are correlation between the bimodal nature across different bimodal features (i.e. do rows with lower BATTING_HR line up with rows with lower/higher BATTING_SO) within rows. If there are strong correlations between bimodal features, that suggests there might be two classes of teams (or yearly team performance) and we could create a new categorical variable(s) indicating the probable Tier per row.  Alternatively, we could assign a new numerical feature indicating the probability a row fell into which class.
+
+* R provides a package, `mixtools` (see R Vignette) which helps regress *mixed models* where data can be subdivided into subgroups.  Here is a quick example showing a possible mix within BATTING_SO:
+
+```{r, echo=FALSE}
+# Select BATTING_SO column and remove any missing data
+df_mix <- df %>% 
+  dplyr::select(BATTING_SO) %>%
+  drop_na()
+
+# Calculate mixed distributions for BATTING_SO
+batting_so_mix <- normalmixEM(df_mix$BATTING_SO, 
+                              lambda = .5, 
+                              mu = c(400, 1200), 
+                              sigma = 5, 
+                              maxit=60)
+
+# Simple plot to illustrate possible bimodal mix of groups
+plot(batting_so_mix, 
+     whichplots = 2,
+     density=TRUE, 
+     main2="BATTING_SO Possible Distributions", 
+     xlab2="BATTING_SO")
+```
 
 ### Boxplots
 
@@ -124,6 +154,7 @@ We elected to use box-plots to get an idea of the spread of each variable.
 ```{r, fig.height = 10, fig.width = 10, echo=FALSE}
 # Prepare data for ggplot
 gather_df <- df %>% gather(key = 'variable', value = 'value')
+
 # Boxplots for each variable
 ggplot(gather_df, aes(variable, value)) + 
   geom_boxplot() + 
@@ -428,6 +459,7 @@ mean squared error, (b) R2, (c) F-statistic, and (d) residual plots. Make predic
 
 - A Modern Approach to Regression with R: Simon Sheather
 - Linear Models with R: Julian Faraway. 
+- R package vignette, [mixtools: An R Package for Analyzing Finite Mixture Models](https://cran.r-project.org/web/packages/mixtools/vignettes/mixtools.pdf)
 
 ## Appendix
 
