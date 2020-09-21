@@ -45,6 +45,7 @@ library(reshape2)
 library(mixtools)
 library(tidymodels)
 library(ggpmisc)
+library(regclass)
 
 #' Print a side-by-side Histogram and QQPlot of Residuals
 #'
@@ -388,38 +389,47 @@ We can explicitly call out our variable importance using the Caret package which
 
 ```{r echo=FALSE}
 VarImpPlot(multi_lm, "Model 1 LM Variable Importance")
+
+print('VIF scores of predictors')
+
+VIF(multi_lm)
 ```
 
+### Model 2
 
 ```{r echo=FALSE}
 
 mult_lm_final <- stepAIC(multi_lm, direction = "both",
                          scope = list(upper = multi_lm, lower = ~ 1),
                          scale = 0, trace = FALSE)
-# Display Model 1 Summary
+# Display Model 2 Summary
 (lmf_s <- summary(mult_lm_final))
 
-# Display Model 1 REsidual plots
+# Display Model 2 REsidual plots
 residPlot(lmf_s)
 ```
 
 
 ```{r echo=FALSE}
 VarImpPlot(mult_lm_final, "Model 2 LM Variable Importance")
+
+print('VIF scores of predictors')
+
+VIF(mult_lm_final)
 ```
 
 We can also use a simple decision tree to help visualize feature importance.
 
 ```{r echo=FALSE}
-# Model 1 - Simple decision tree for feature importance
+# Model 2 - Simple decision tree for feature importance
 dt_m <- caret::train(TARGET_WINS ~ ., data = clean_df, tuneLength = 19L, method = 'rpart2')
 rpart.plot(dt_m$finalModel, type = 1L)
 ```
 
 
-### Model 2
+### Model 3
 
-In our second model, we decided to utilize some of our transformed variables to compare against our initial model. As a result of the transformations, there were just a few values that needed to be imputed -- we imputed using the mean value for the given variable.
+In our third model, we decided to utilize some of our transformed variables to compare against our initial model. As a result of the transformations, there were just a few values that needed to be imputed -- we imputed using the mean value for the given variable.
 
 ```{r echo=FALSE}
 # Model 2 - Create data frame with Transformed features
@@ -450,7 +460,7 @@ clean_trans_df$BASERUN_SB_transform[is.na(clean_trans_df$BASERUN_SB_transform)] 
 clean_trans_df$PITCHING_SO_transform[is.na(clean_trans_df$PITCHING_SO_transform)] <- mean3
 ```
 
-Then, similar to model 1, we used Stepwise selection to determine feature importance and select the simplest model possible.
+Then, similar to model 2, we used Stepwise selection to determine feature importance and select the simplest model possible.
 ```{r echo=FALSE}
 
 set.seed(3)
@@ -458,33 +468,37 @@ df_trans_split<-initial_split(clean_trans_df)
 df_trans_train<-training(df_trans_split)
 df_trans_test<- testing(df_trans_split)
 
-# Model 2 - Build linear model
+# Model 3 - Build linear model
 multi_lm_2 <- lm(TARGET_WINS ~ ., df_trans_train)
 
-# Model 2 - Show model summary info
+# Model 3 - Show model summary info
 (lm_s_2 <- summary(multi_lm_2))
 
-# Model 2 - Show Confidence and Residual Plots
+# Model 3 - Show Confidence and Residual Plots
 confint(multi_lm_2)
 residPlot(lm_s_2)
 
-# Model 2 - use stepAIC to select significant features
+# Model 3 - use stepAIC to select significant features
 mult_lm_final_2 <- stepAIC(multi_lm_2, direction = "both",
                          scope = list(upper = multi_lm_2, lower = ~ 1),
                          scale = 0, trace = FALSE)
 
-# Model 2 - Show summary of revised model with only significant features included
+# Model 3 - Show summary of revised model with only significant features included
 (lmf_s_2 <- summary(mult_lm_final_2))
 
-# model 2 - Show residual plots
+# model 3 - Show residual plots
 residPlot(lmf_s_2)
 ```
 
-We can assess variable importance of our model with our original dataset (model 1) to our transformed dataset (model 2) as shown below. We notice that "Batting_BB" and "Batting_H" are much closer together in terms of weight in predicting target_wins than in model 1 (pre-transformed)
+We can assess variable importance of our model with our original dataset (model 2) to our transformed dataset (model 3) as shown below. We notice that "Batting_BB" and "Batting_H" are much closer together in terms of weight in predicting target_wins than in model 1 (pre-transformed)
 
 ```{r echo=FALSE}
-# Model 2 - Show feature importance in final model after stepAIC
+# Model 3 - Show feature importance in final model after stepAIC
 VarImpPlot(mult_lm_final_2, "Model 3 LM Variable Importance")
+
+print('VIF scores of predictors')
+
+VIF(mult_lm_final_2)
 ```
 
 ## 4. Select Models
