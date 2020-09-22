@@ -142,7 +142,7 @@ ggplot(gather_df) +
 
 The distribution profiles sure the prevalence of kurtosis, specifically right skew in variables BASERUN_CS, BASERUN_CB, FIELDING_E, PITCHING_RB, PITCHING_H and PITCHING_SO. These deviations from a traditional normal distribution can be problematic for linear regression assumptions, and thus we might need to transform the data.  Furthermore BATTING_HBP, BATTING_HR, PITCHING_HR and BATTING_SO appear bimodal. Bimodal features in a dataset are both problematic and interesting and potentially an area of opportunity and exploration.  Bimodal data suggests that there are possibly two different groups or classes of baseball season data.  During those seasons, teams tended to score higher or lower for the bimodal feature.  
 
-Two possibilities immediate come to mind.  The bimodal nature could be caused by a rule change such that games before a specific time point had lower values and games after that point had higher values.  Unfortunately, we do not have any features on which year the data is associated.  The second is that teams either do well or not for the given KPI.  Let's consider BATTING_SO (Batters striking out) - if some teams have better players, they might have a reasonable normal distribution lower than those teams with worse players.  We do know that certain teams are able to attract and pay for better players (let's call them Tier 1) and some teams with lower budgets and less visibility (let's call them Tier 2). Even with a given team, they might have "good years" and "off years".  It's possible the distribution of BATTING_SO represents the overlap or superposition of this two distinct curves representing different classes of team.
+Two possibilities immediately come to mind.  The bimodal nature could be caused by a rule change such that games before a specific time point had lower values and games after that point had higher values.  Unfortunately, we do not have any features on which year the data is associated.  The second is that teams either do well or not for the given KPI.  Let's consider BATTING_SO (Batters striking out) - if some teams have better players, they might have a reasonable normal distribution lower than those teams with worse players.  We do know that certain teams are able to attract and pay for better players (let's call them Tier 1) and some teams with lower budgets and less visibility (let's call them Tier 2). Even with a given team, they might have "good years" and "off years".  It's possible the distribution of BATTING_SO represents the overlap or superposition of this two distinct curves representing different classes of team.
 
 While we don't tackle feature engineering in this analysis, if we were performing a more in-depth analysis, these are some possible options.
 
@@ -175,7 +175,7 @@ plot(batting_so_mix,
 
 ### Boxplots
 
-We elected to use box-plots to get an idea of the spread of each variable. 
+In addition to creating histogram distributions, we also elected to use box-plots to get an idea of the spread of each variable. 
 
 ```{r, fig.height = 10, fig.width = 10, echo=FALSE}
 # Prepare data for ggplot
@@ -200,9 +200,9 @@ featurePlot(df[,2:ncol(df)], df[,1], pch = 20)
 
 The plots indicate some clear relationships, such as hitting more doubles or more home runs clearly improves the number of wins.
 
+Overall, although our plots indicate some interesting relationships between our variables, they also reveal some significant issues with the data. 
 
-Overall our collection of plots also reveal significant issues with the data. 
-Most of the predictor variables are skewed or non-normally distributed, and wlll need to be transformed. There are many data points that contain missing data that will need to be either imputed or discarded. Finally it appears we have some missing data encoded as 0 and some nonsensical outliers.
+For instance, most of the predictor variables are skewed or non-normally distributed, and will need to be transformed. Additionally, there are many data points that contain missing data that will need to be either imputed or discarded. It also appears we have some missing data encoded as 0 and some nonsensical outliers.
 
 There is a team with 0 wins in the dataset. This seems unlikely. Many of the hitting categories include teams at 0; it is unlikely that a team hit 0 home runs over the course of a season.
 
@@ -252,7 +252,7 @@ gather_clean_df <- clean_df %>% gather(key = 'variable', value = 'value', -TARGE
 
 ### Feature-Target Correlations
 
-Building off the scatter plots, we wanted to quantify the correlations between our target variable and predictor variable. We will want to choose those with stronger positive or negative correlations.  Features with correlations closer to zero will probably not provide any meaningful information on explaining wins by a team.
+With our missing data imputed correctly, we can now build off the scatter plots from above to quantify the correlations between our target variable and predictor variable. We will want to choose those with stronger positive or negative correlations.  Features with correlations closer to zero will probably not provide any meaningful information on explaining wins by a team.
 
 ```{r echo=FALSE}
 # Show feature correlations/target by decreasing correlation
@@ -273,9 +273,11 @@ corrplot(correlation, 'ellipse', type = 'lower', order = 'hclust',
          col=brewer.pal(n=8, name="RdYlBu"))
 ```
 
-When we start considering features for our models, we'll need to account for the correlations between features and avoid including pairs with strong correlations.
+We can see that some variables are highly correlated with one another, such as PITCHING_BB and BATTING_BB. When we start considering features for our models, we'll need to account for the correlations between features and avoid including pairs with strong correlations.
 
 ## 2. Data Preparation
+
+To summarize our data preparation and exploration, we can distinguish our findings into a few categories below:
 
 ### Removed Fields
 
@@ -283,7 +285,7 @@ We removed the BATTING_HBP field as it was missing >90% of the data and the INDE
 
 ### Missing Values
 
-Missing values found in BASERUN_CS (Caught Stolen Bases), FIELDING_DP (Double plays), BASERUN_SB (Stolen Bases), BATTING_SO (Batter Strike outs), PITCHING_SO (Pitcher Strike outs) were all replaced with median values.  It is highly unlikely that teams had none of these during an entire season.
+There were missing values found in BASERUN_CS (Caught Stolen Bases), FIELDING_DP (Double plays), BASERUN_SB (Stolen Bases), BATTING_SO (Batter Strike outs), PITCHING_SO (Pitcher Strike outs) so we decided to replace these missing values with their corresponding median values.  It is highly unlikely that teams had none of these during an entire season.
 
 ### Outliers
 
@@ -291,7 +293,7 @@ There are unreasonable outliers found in PITCHING_SO (pitching strikeouts), PITC
 
 ### Transform non-normal variables
 
-From our plots above, we can see that some of our variables are highly skewed. To address this, we decided to perform some transformations to make them more normally distributed. Here are some plots to demonstrate the changes in distributions before and after the transformations:  
+Finally, as mentioned earlier in our data exploration, and our findings from our histogram plots, we can see that some of our variables are highly skewed. To address this, we decided to perform some transformations to make them more normally distributed. Here are some plots to demonstrate the changes in distributions before and after the transformations:  
 
 ```{r echo=FALSE, fig.height=12, fig.width=10, message=FALSE, warning=FALSE}
 
@@ -343,21 +345,39 @@ histbox(df_temp, c(6, 2))
 
 ## 3. Build Models
 
-*Using the training data set, build at least three different multiple linear regression models, using different variables
-(or the same variables with different transformations). Since we have not yet covered automated variable
-selection methods, you should select the variables manually (unless you previously learned Forward or Stepwise
-selection, etc.). Since you manually selected a variable for inclusion into the model or exclusion into the model,
-indicate why this was done.
+*Using the training data set, build at least three different multiple linear regression models, using different variables (or the same variables with different transformations). Since we have not yet covered automated variable selection methods, you should select the variables manually (unless you previously learned Forward or Stepwise selection, etc.). Since you manually selected a variable for inclusion into the model or exclusion into the model, indicate why this was done.*  
 
-Discuss the coefficients in the models, do they make sense? For example, if a team hits a lot of Home Runs, it
-would be reasonably expected that such a team would win more games. However, if the coefficient is negative
-(suggesting that the team would lose more games), then that needs to be discussed. Are you keeping the model
-even though it is counter intuitive? Why? The boss needs to know.*
+*Discuss the coefficients in the models, do they make sense? For example, if a team hits a lot of Home Runs, it would be reasonably expected that such a team would win more games. However, if the coefficient is negative (suggesting that the team would lose more games), then that needs to be discussed. Are you keeping the model even though it is counter intuitive? Why? The boss needs to know.* 
 
-**WRITE ABOUT METHODOLOGY BRIEFLY AND COEFFICIENTS** 
+### Model-building methodology  
+
+With a solid understanding of our dataset at this point, and with our data cleaned, we can now start to build out some of our multiple linear regression models.  
+
+First, we decided to split our cleaned dataset into a training and testing set (80% training, 20% testing). Then, using our training dataset, we decided to run a multiple linear regression model (Model #1) that included all features that we hadn't removed following our data cleaning process mentioned above. Next, in Model #2, to help us select the optimal set of features, we ran the `stepAIC` function in R to perform stepwise selection on our initial model to help reduce the number of features and address some of our multicollinearity issues from Model #1 (explained more below). Finally, our last model (Model #3) included all data from our cleaned dataset, but also contained some of our transformed features. We split this dataset into a training and testing set (80% training, 20% testing as well), and then substituted some of our original features with those that were transformed. Additionally, we ran this model through stepwise selection as well to determine the optimal set of features and to reduce multicollinearity as much as possible.  
 
 
-### Model 1
+### Examining our model coefficients  
+
+Throughout our model-building process, we noticed that many of our outputs yielded a few coefficient values that seemed to contradict our initial estimates. For instance, in Model #1:  
+
+**Negative values for coefficients that we'd expect to be positive**
+
++ BATTING_2B - logically more doubles hit by batters would increase the likelihood of winning more games  
++ BATTING_HR - logically more homeruns hit by batters would increase the likelihood of winning more games  
++ PITCHING_SO - logically more strikeouts thrown by pitchers would increase the likelihood of winning more games  
++ FIELDING_DP  - logically more double plays turned by a team would increase the likelihood of winning more games  
+
+**Positive values for coefficients that we'd expect to be negative**  
+
++ BATTING_SO  - logically more strikeouts by batters would lead to less of a likelihood of winning more games  
++ PITCHING_H - logically more hits given up by pitchers would lead to less of a likelihood of winning more games  
++ PITCHING_HR - logically more homeruns given up by pitchers would lead to less of a likelihood of winning more games  
+
+This is a trend we saw throughout the three models that we built, although Model #3 was able to adjust for this better than our first two models -- we can likely attribute this phenomenon to multicollinearity. Since we noticed in our initial data exploration that many variables in the dataset were highly correlated with one another (i.e. BATTING_2B and BATTING_HR), this phenomenon likely is increasing the variance of the coefficient estimates, making them difficult to interpret (and in some cases such as the features listed above, they are switching the signs). This was also supported by our Variance Inflation Factor (VIF) tests, which showed high values for features such as BATTING_HR, BATTING_SO, PITCHING_HR, and PITCHING_SO. In our final model (Model #3), we made sure to keep this in mind in order to get a better handle on our coefficients and reduce multicollinearity -- mainly, we removed certain variables that had high VIF scores through our stepwise selection process. Later in our discussion, we'll discuss whether or not we'd keep our final model based on this issue.  
+
+### Model 1  
+
+As mentioned above, below is our initial multiple linear regression model that includes all features from our cleaned dataset.
 
 ```{r echo=FALSE}
 # Splitting the dataset into train/testing set with 80/20 split
@@ -391,7 +411,6 @@ VarImpPlot<-function(LINEARMODEL,TITLE){
 ```
 
  
-
 We can explicitly call out our variable importance using the Caret package which will determine our feature importance for each of the multiple linear regression models individually.
 
 ```{r echo=FALSE}
@@ -402,7 +421,9 @@ print('VIF scores of predictors')
 VIF(multi_lm)
 ```
 
-### Model 2
+### Model 2  
+
+In our second model, below, we decided to use stepwise selection in order to help us determine the optimal set of features from our original, cleaned dataset.
 
 ```{r echo=FALSE}
 
@@ -499,7 +520,6 @@ mult_lm_final_2 <- stepAIC(multi_lm_2, direction = "both",
 residPlot(lmf_s_2)
 ```
 
-
 We can assess variable importance of our model with our original dataset (model 2) to our transformed dataset (model 3) as shown below. We notice that "Batting_BB" and "Batting_H" are much closer together in terms of weight in predicting target_wins than in model 1 (pre-transformed)
 
 ```{r echo=FALSE}
@@ -522,7 +542,7 @@ The following table discusses each of the model performance metrics on the train
 
 All models achieved a positive adjusted R^2 pointing to a weakly-positive relationship between the target variable TOTAL_WINs and the model predictor variables. 
 
-From the previous section and residual diagnostics (both the residual historgram and QQ plot)--all three models have normally distributed residuals with mean 0. There appears to be no hetrodescadity (non-constance variance) or serial-correlation within the residauls--thus strictly from a linear regression perspective, none of the assumptions are violated and thus we can make inferential predictions based on our model. 
+From the previous section and residual diagnostics (both the residual histogram and QQ plot)--all three models have normally distributed residuals with mean 0. There appears to be no heteroskedasticity (non-constant variance) or serial-correlation within the residuals--thus strictly from a linear regression perspective, none of the assumptions are violated and thus we can make inferential predictions based on our model. 
 
 Next looking at the F-statistic for all models were large and achieved a statistically significant p-value than than a default alpha of .05; thus for all three models the Null hypothesis that is rejected that 0s for our regression coefficients would fit the data better. 
 
@@ -611,9 +631,9 @@ of 0.31 on the training set and 0.31 on the testing dataset.
 Model 3 - This model is based on a subset of significant predictors on an transformed dataset. Results for this model provided an R^2 of about 
 of 0.31 on the training set and 0.31 on the testing dataset.
 
-Based on these analyses, Model 2 and model 3 both performed marginally better than model 1 and could be selected as the linear model of choice when looking at adjusted R2, however there is greater statistical significance under the third model relative to the others and uses less unnecessary variables to compute our prediction and thus model 3 would be the model of choice. 
+### Model of choice  
 
-**WRITE WHICH MODEL WAS THE BEST--I THINNK IT'S 3*
+Based on these analyses, Model 2 and Model 3 both performed marginally better than Model 1 and could be selected as the linear model of choice when looking at adjusted R2. However, there is greater statistical significance under the third model relative to the others and uses less unnecessary variables to compute our prediction without sacrificing much in terms of adjusted R^2 value. Additionally, Model 3 seems to have lower VIF scores than Models 1 and 2. Because of these factors, as well as its better adjustment for multicollinearity (we noticeably saw less sign-flipping in coefficients) and thus model 3 would be the model of choice. 
 
 
 ## References
