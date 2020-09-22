@@ -140,7 +140,9 @@ ggplot(gather_df) +
   facet_wrap(. ~variable, scales='free', ncol=4)
 ```
 
-The distribution profiles sure the prevalence of kurtosis, specifically right skew in variables BASERUN_CS, BASERUN_CB, FIELDING_E, PITCHING_RB, PITCHING_H and PITCHING_SO. These deviations from a traditional normal distribution can be problematic for linear regression assumptions, and thus we might need to transform the data.  Furthermore BATTING_HBP, BATTING_HR, PITCHING_HR and BATTING_SO appear bimodal. Bimodal features in a dataset are both problematic and interesting and potentially an area of opportunity and exploration.  Bimodal data suggests that there are possibly two different groups or classes of baseball season data.  During those seasons, teams tended to score higher or lower for the bimodal feature.  Two possibilities immediate come to mind.  The bimodal nature could be caused by a rule change such that games before a specific time point had lower values and games after that point had higher values.  Unfortunately, we do not have any features on which year the data is associated.  The second is that teams either do well or not for the given KPI.  Let's consider BATTING_SO (Batters striking out) - if some teams have better players, they might have a reasonable normal distribution lower than those teams with worse players.  We do know that certain teams are able to attract and pay for better players (let's call them Tier 1) and some teams with lower budgets and less visibility (let's call them Tier 2). Even with a given team, they might have "good years" and "off years".  It's possible the distribution of BATTING_SO represents the overlap or superposition of this two distinct curves representing different classes of team.
+The distribution profiles sure the prevalence of kurtosis, specifically right skew in variables BASERUN_CS, BASERUN_CB, FIELDING_E, PITCHING_RB, PITCHING_H and PITCHING_SO. These deviations from a traditional normal distribution can be problematic for linear regression assumptions, and thus we might need to transform the data.  Furthermore BATTING_HBP, BATTING_HR, PITCHING_HR and BATTING_SO appear bimodal. Bimodal features in a dataset are both problematic and interesting and potentially an area of opportunity and exploration.  Bimodal data suggests that there are possibly two different groups or classes of baseball season data.  During those seasons, teams tended to score higher or lower for the bimodal feature.  
+
+Two possibilities immediate come to mind.  The bimodal nature could be caused by a rule change such that games before a specific time point had lower values and games after that point had higher values.  Unfortunately, we do not have any features on which year the data is associated.  The second is that teams either do well or not for the given KPI.  Let's consider BATTING_SO (Batters striking out) - if some teams have better players, they might have a reasonable normal distribution lower than those teams with worse players.  We do know that certain teams are able to attract and pay for better players (let's call them Tier 1) and some teams with lower budgets and less visibility (let's call them Tier 2). Even with a given team, they might have "good years" and "off years".  It's possible the distribution of BATTING_SO represents the overlap or superposition of this two distinct curves representing different classes of team.
 
 While we don't tackle feature engineering in this analysis, if we were performing a more in-depth analysis, these are some possible options.
 
@@ -341,7 +343,7 @@ histbox(df_temp, c(6, 2))
 
 ## 3. Build Models
 
-Using the training data set, build at least three different multiple linear regression models, using different variables
+*Using the training data set, build at least three different multiple linear regression models, using different variables
 (or the same variables with different transformations). Since we have not yet covered automated variable
 selection methods, you should select the variables manually (unless you previously learned Forward or Stepwise
 selection, etc.). Since you manually selected a variable for inclusion into the model or exclusion into the model,
@@ -350,9 +352,13 @@ indicate why this was done.
 Discuss the coefficients in the models, do they make sense? For example, if a team hits a lot of Home Runs, it
 would be reasonably expected that such a team would win more games. However, if the coefficient is negative
 (suggesting that the team would lose more games), then that needs to be discussed. Are you keeping the model
-even though it is counter intuitive? Why? The boss needs to know.
+even though it is counter intuitive? Why? The boss needs to know.*
+
+**WRITE ABOUT METHODOLOGY BRIEFLY AND COEFFICIENTS** 
+
 
 ### Model 1
+
 ```{r echo=FALSE}
 # Splitting the dataset into train/testing set with 80/20 split
 set.seed(3)
@@ -384,6 +390,7 @@ VarImpPlot<-function(LINEARMODEL,TITLE){
 
 ```
 
+ 
 
 We can explicitly call out our variable importance using the Caret package which will determine our feature importance for each of the multiple linear regression models individually.
 
@@ -408,6 +415,7 @@ mult_lm_final <- stepAIC(multi_lm, direction = "both",
 # Display Model 2 REsidual plots
 residPlot(lmf_s)
 ```
+
 
 
 ```{r echo=FALSE}
@@ -461,6 +469,7 @@ clean_trans_df$PITCHING_SO_transform[is.na(clean_trans_df$PITCHING_SO_transform)
 ```
 
 Then, similar to model 2, we used Stepwise selection to determine feature importance and select the simplest model possible.
+
 ```{r echo=FALSE}
 
 set.seed(3)
@@ -490,6 +499,7 @@ mult_lm_final_2 <- stepAIC(multi_lm_2, direction = "both",
 residPlot(lmf_s_2)
 ```
 
+
 We can assess variable importance of our model with our original dataset (model 2) to our transformed dataset (model 3) as shown below. We notice that "Batting_BB" and "Batting_H" are much closer together in terms of weight in predicting target_wins than in model 1 (pre-transformed)
 
 ```{r echo=FALSE}
@@ -501,14 +511,26 @@ print('VIF scores of predictors')
 VIF(mult_lm_final_2)
 ```
 
-## 4. Select Models
+## 4. Model Selection & Analysis 
 
-For the multiple linear regression model, will you use a metric such as Adjusted R2, RMSE, etc.? Be sure to
+*For the multiple linear regression model, will you use a metric such as Adjusted R2, RMSE, etc.? Be sure to
 explain how you can make inferences from the model, discuss multi-collinearity issues (if any), and discuss other
 relevant model output. Using the training data set, evaluate the multiple linear regression model based on (a)
-mean squared error, (b) R2, (c) F-statistic, and (d) residual plots. Make predictions using the evaluation data set.
+mean squared error, (b) R2, (c) F-statistic, and (d) residual plots. Make predictions using the evaluation data set.*
 
-The following table discusses each of the model performance metrics on the training dataset. These values indicate there is a minor improvement in model performance after applying transformations and selecting for significant parameters.  The F-statistic however grows as we applied changes to the models and the increase in F-values suggest greater overall model statistical significance.
+The following table discusses each of the model performance metrics on the training dataset. These values indicate there is a minor improvement in model performance after applying transformations and selecting for significant parameters.  
+
+All models achieved a positive adjusted R^2 pointing to a weakly-positive relationship between the target variable TOTAL_WINs and the model predictor variables. 
+
+From the previous section and residual diagnostics (both the residual historgram and QQ plot)--all three models have normally distributed residuals with mean 0. There appears to be no hetrodescadity (non-constance variance) or serial-correlation within the residauls--thus strictly from a linear regression perspective, none of the assumptions are violated and thus we can make inferential predictions based on our model. 
+
+Next looking at the F-statistic for all models were large and achieved a statistically significant p-value than than a default alpha of .05; thus for all three models the Null hypothesis that is rejected that 0s for our regression coefficients would fit the data better. 
+
+From the exploratory data analysis we saw that many of the predictor variables were correlated with each other--this makes sense given that baseball is a team sport, and thus different position scoring/runs helps contribute to wins. However this could be an issue from a multicolinearity, that can lead to unstable regression fits. From the previous section we used VIF (Variable Inflation Factor) to guage better models by preferring VIF values less than 5. 
+
+
+
+
 ```{r}
 
 model_performance_extraction<- function(MODEL){
@@ -591,7 +613,7 @@ of 0.31 on the training set and 0.31 on the testing dataset.
 
 Based on these analyses, Model 2 and model 3 both performed marginally better than model 1 and could be selected as the linear model of choice when looking at adjusted R2, however there is greater statistical significance under the third model relative to the others and uses less unnecessary variables to compute our prediction and thus model 3 would be the model of choice. 
 
-
+**WRITE WHICH MODEL WAS THE BEST--I THINNK IT'S 3*
 
 
 ## References
@@ -599,6 +621,9 @@ Based on these analyses, Model 2 and model 3 both performed marginally better th
 - A Modern Approach to Regression with R: Simon Sheather
 - Linear Models with R: Julian Faraway. 
 - R package vignette, [mixtools: An R Package for Analyzing Finite Mixture Models](https://cran.r-project.org/web/packages/mixtools/vignettes/mixtools.pdf)
+- [7 Classic OLS assumptions](https://statisticsbyjim.com/regression/ols-linear-regression-assumptions/)
+- [Detecting Multicolinearity with VIF](https://online.stat.psu.edu/stat462/node/180/)
+
 
 ## Appendix
 
