@@ -343,22 +343,47 @@ histbox <- function(df, box) {
 histbox(df_temp, c(6, 2))
 ```
 
+
+### Finalizing the dataset for model building 
+
+With our transformations complete, we can now add these into our `clean_df` dataframe and continue on to build our models.
+
+```{r}
+clean_df <- data.frame(cbind(clean_df, 
+                        BATTING_3B_transform = df_temp$BATTING_3B_transform,
+                        BATTING_HR_transform = df_temp$BATTING_HR_transform,
+                        BASERUN_SB_transform = df_temp$BASERUN_SB_transform,
+                        PITCHING_BB_transform = df_temp$PITCHING_BB_transform,
+                        PITCHING_SO_transform = df_temp$PITCHING_SO_transform,
+                        FIELDING_E_transform = df_temp$FIELDING_E_transform))
+
+is.na(clean_df) <- sapply(clean_df, is.infinite)
+
+mean = mean(clean_df$BATTING_3B_transform, na.rm = TRUE)
+mean2 = mean(clean_df$BASERUN_SB_transform, na.rm = TRUE)
+mean3 = mean(clean_df$PITCHING_SO_transform, na.rm = TRUE)
+
+clean_df$BATTING_3B_transform[is.na(clean_df$BATTING_3B_transform)] <- mean
+clean_df$BASERUN_SB_transform[is.na(clean_df$BASERUN_SB_transform)] <- mean2
+clean_df$PITCHING_SO_transform[is.na(clean_df$PITCHING_SO_transform)] <- mean3
+```
+
+
 ## 3. Build Models
 
-*Using the training data set, build at least three different multiple linear regression models, using different variables (or the same variables with different transformations). Since we have not yet covered automated variable selection methods, you should select the variables manually (unless you previously learned Forward or Stepwise selection, etc.). Since you manually selected a variable for inclusion into the model or exclusion into the model, indicate why this was done.*  
-
+*Using the training data set, build at least three different multiple linear regression models, using different variables (or the same variables with different transformations). Since we have not yet covered automated variable selection methods, you should select the variables manually (unless you previously learned Forward or Stepwise selection, etc.). Since you manually selected a variable for inclusion into the model or exclusion into the model, indicate why this was done.* 
 *Discuss the coefficients in the models, do they make sense? For example, if a team hits a lot of Home Runs, it would be reasonably expected that such a team would win more games. However, if the coefficient is negative (suggesting that the team would lose more games), then that needs to be discussed. Are you keeping the model even though it is counter intuitive? Why? The boss needs to know.* 
 
 ### Model-building methodology  
 
 With a solid understanding of our dataset at this point, and with our data cleaned, we can now start to build out some of our multiple linear regression models.  
 
-First, we decided to split our cleaned dataset into a training and testing set (80% training, 20% testing). Then, using our training dataset, we decided to run a multiple linear regression model (Model #1) that included all features that we hadn't removed following our data cleaning process mentioned above. Next, in Model #2, to help us select the optimal set of features, we ran the `stepAIC` function in R to perform stepwise selection on our initial model to help reduce the number of features and address some of our multicollinearity issues from Model #1 (explained more below). Finally, our last model (Model #3) included all data from our cleaned dataset, but also contained some of our transformed features. We split this dataset into a training and testing set (80% training, 20% testing as well), and then substituted some of our original features with those that were transformed. Additionally, we ran this model through stepwise selection as well to determine the optimal set of features and to reduce multicollinearity as much as possible.  
+First, we decided to split our cleaned dataset into a training and testing set (80% training, 20% testing). Then, using our training dataset, we decided to run a multiple linear regression model (Model #1) that included all non-transformed features that we hadn't removed following our data cleaning process mentioned above. Next, in Model #2, to help us select the optimal set of features, we ran the `stepAIC` function in R to perform stepwise selection on our initial model to help reduce the number of features and address some of our multicollinearity issues from Model #1 (explained more below). Finally, our last model (Model #3) included all data from our cleaned dataset, but also contained some of our transformed features in replacement of their non-transformed counterparts. Additionally, we ran this model through stepwise selection as well to determine the optimal set of features and to reduce multicollinearity as much as possible.  
 
 
 ### Examining our model coefficients  
 
-Throughout our model-building process, we noticed that many of our outputs yielded a few coefficient values that seemed to contradict our initial estimates. For instance, in Model #1:  
+Throughout our model-building process, we noticed that many of our model outputs yielded a few coefficient values that seemed to contradict our initial estimates. For instance, in Model #1:  
 
 **Negative values for coefficients that we'd expect to be positive**
 
@@ -388,7 +413,7 @@ df_test<-testing(df_split)
 
 # Model 1 - Include all features and leverage stepAIC to help identify ideal features
 
-multi_lm <- lm(TARGET_WINS ~ ., df_train)
+multi_lm <- lm(TARGET_WINS ~ BATTING_H + BATTING_2B + BATTING_3B + BATTING_HR + BATTING_BB + BATTING_SO + BASERUN_SB + BASERUN_CS + PITCHING_H + PITCHING_HR + PITCHING_BB + PITCHING_SO + FIELDING_E + FIELDING_DP, df_train)
 (lm_s <- summary(multi_lm))
 confint(multi_lm)
 residPlot(lm_s)
@@ -458,48 +483,12 @@ rpart.plot(dt_m$finalModel, type = 1L)
 
 ### Model 3
 
-In our third model, we decided to utilize some of our transformed variables to compare against our initial model. As a result of the transformations, there were just a few values that needed to be imputed -- we imputed using the mean value for the given variable.
+In our third model, we decided to utilize some of our transformed variables to compare against our initial model. Additionally, similar to model 2, we used stepwise selection to determine feature importance and select the simplest model possible.
 
 ```{r echo=FALSE}
-# Model 2 - Create data frame with Transformed features
-clean_trans_df <- data.frame(cbind(TARGET_WINS = clean_df$TARGET_WINS, 
-                        BATTING_H = clean_df$BATTING_H,
-                        BATTING_2B = clean_df$BATTING_2B,
-                        BATTING_3B_transform = df_temp$BATTING_3B_transform,
-                        BATTING_HR_transform = df_temp$BATTING_HR_transform,
-                        BATTING_BB = clean_df$BATTING_BB,
-                        BATTING_SO = clean_df$BATTING_SO,
-                        BASERUN_SB_transform = df_temp$BASERUN_SB_transform,
-                        BASERUN_CS = clean_df$BASERUN_CS,
-                        PITCHING_H = clean_df$PITCHING_H,
-                        PITCHING_HR = clean_df$PITCHING_HR,
-                        PITCHING_BB_transform = df_temp$PITCHING_BB_transform,
-                        PITCHING_SO_transform = df_temp$PITCHING_SO_transform,
-                        FIELDING_E_transform = df_temp$FIELDING_E_transform,
-                        FIELDING_DP = clean_df$FIELDING_DP))
-
-is.na(clean_trans_df) <- sapply(clean_trans_df, is.infinite)
-
-mean = mean(clean_trans_df$BATTING_3B_transform, na.rm = TRUE)
-mean2 = mean(clean_trans_df$BASERUN_SB_transform, na.rm = TRUE)
-mean3 = mean(clean_trans_df$PITCHING_SO_transform, na.rm = TRUE)
-
-clean_trans_df$BATTING_3B_transform[is.na(clean_trans_df$BATTING_3B_transform)] <- mean
-clean_trans_df$BASERUN_SB_transform[is.na(clean_trans_df$BASERUN_SB_transform)] <- mean2
-clean_trans_df$PITCHING_SO_transform[is.na(clean_trans_df$PITCHING_SO_transform)] <- mean3
-```
-
-Then, similar to model 2, we used Stepwise selection to determine feature importance and select the simplest model possible.
-
-```{r echo=FALSE}
-
-set.seed(3)
-df_trans_split<-initial_split(clean_trans_df)
-df_trans_train<-training(df_trans_split)
-df_trans_test<- testing(df_trans_split)
 
 # Model 3 - Build linear model
-multi_lm_2 <- lm(TARGET_WINS ~ ., df_trans_train)
+multi_lm_2 <- lm(TARGET_WINS ~ BATTING_H + BATTING_2B + BATTING_3B_transform + BATTING_HR_transform + BATTING_BB + BATTING_SO + BASERUN_SB_transform + BASERUN_CS + PITCHING_H + PITCHING_HR + PITCHING_BB_transform + PITCHING_SO_transform + FIELDING_E_transform + FIELDING_DP, df_train)
 
 # Model 3 - Show model summary info
 (lm_s_2 <- summary(multi_lm_2))
@@ -533,10 +522,7 @@ VIF(mult_lm_final_2)
 
 ## 4. Model Selection & Analysis 
 
-*For the multiple linear regression model, will you use a metric such as Adjusted R2, RMSE, etc.? Be sure to
-explain how you can make inferences from the model, discuss multi-collinearity issues (if any), and discuss other
-relevant model output. Using the training data set, evaluate the multiple linear regression model based on (a)
-mean squared error, (b) R2, (c) F-statistic, and (d) residual plots. Make predictions using the evaluation data set.*
+*For the multiple linear regression model, will you use a metric such as Adjusted R2, RMSE, etc.? Be sure to explain how you can make inferences from the model, discuss multi-collinearity issues (if any), and discuss other relevant model output. Using the training data set, evaluate the multiple linear regression model based on (a) mean squared error, (b) R2, (c) F-statistic, and (d) residual plots. Make predictions using the evaluation data set.*
 
 The following table discusses each of the model performance metrics on the training dataset. These values indicate there is a minor improvement in model performance after applying transformations and selecting for significant parameters.  
 
@@ -547,8 +533,6 @@ From the previous section and residual diagnostics (both the residual histogram 
 Next looking at the F-statistic for all models were large and achieved a statistically significant p-value than than a default alpha of .05; thus for all three models the Null hypothesis that is rejected that 0s for our regression coefficients would fit the data better. 
 
 From the exploratory data analysis we saw that many of the predictor variables were correlated with each other--this makes sense given that baseball is a team sport, and thus different position scoring/runs helps contribute to wins. However this could be an issue from a multicolinearity, that can lead to unstable regression fits. From the previous section we used VIF (Variable Inflation Factor) to guage better models by preferring VIF values less than 5. 
-
-
 
 
 ```{r}
@@ -585,8 +569,8 @@ results<-multi_lm %>%
               mutate(Predicted = df_train$TARGET_WINS,
                      model = "Model 2"),
             mult_lm_final_2 %>% 
-              predict(df_trans_train) %>% as.data.frame() %>% 
-              mutate(Predicted = df_trans_train$TARGET_WINS,
+              predict(df_train) %>% as.data.frame() %>% 
+              mutate(Predicted = df_train$TARGET_WINS,
                      model = "Model 3")) %>% 
   rename("Observed" = ".") %>% mutate(dataset = "Training Set") %>% 
   bind_rows(
@@ -599,8 +583,8 @@ results<-multi_lm %>%
                 mutate(Predicted = df_test$TARGET_WINS,
                        model = "Model 2"),
               mult_lm_final_2 %>% 
-                predict(df_trans_test) %>% as.data.frame() %>% 
-                mutate(Predicted = df_trans_test$TARGET_WINS,
+                predict(df_test) %>% as.data.frame() %>% 
+                mutate(Predicted = df_test$TARGET_WINS,
                        model = "Model 3")) %>% 
     rename("Observed" = ".") %>% mutate(dataset = "Testing Set")
   )
