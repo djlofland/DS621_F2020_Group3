@@ -55,6 +55,11 @@ library(regclass)
 #' @return null
 #' @export
 residPlot <- function(model) {
+  # Make sure a model was passed
+  if (is.null(model)) {
+    return
+  }
+  
   layout(matrix(c(1,1,2,3), 2, 2, byrow = TRUE))
   plot(residuals(model))
   hist(model[["residuals"]], freq = FALSE, breaks = "fd", main = "Residual Histogram",
@@ -65,6 +70,75 @@ residPlot <- function(model) {
   qqline(model[["residuals"]],col="red", lwd=3, lty="dotted")
   par(mfrow = c(1, 1))
 }
+
+#' Print a Variable Importance Plot for the provided model
+#'
+#' @param model The model
+#' @param chart_title The Title to show on the plot
+#' @examples
+#' variableImportancePlot(myLinearModel, 'My Title)
+#' @return null
+#' @export
+variableImportancePlot <- function(model=NULL, chart_title='Variable Importance Plot') {
+  # Make sure a model was passed
+  if (is.null(model)) {
+    return
+  }
+  
+  # use caret and gglot to print a variable importance plot
+  varImp(model) %>% as.data.frame() %>% 
+    ggplot(aes(x = reorder(rownames(.), desc(Overall)), y = Overall)) +
+    geom_col(aes(fill = Overall)) +
+    theme(panel.background = element_blank(),
+          panel.grid = element_blank(),
+          axis.text.x = element_text(angle = 90)) +
+    scale_fill_gradient() +
+    labs(title = chart_title,
+         x = "Parameter",
+         y = "Relative Importance")
+}
+
+
+#' Print a Facet Chart of histograms
+#'
+#' @param df Dataset
+#' @param box Facet size (rows)
+#' @examples
+#' histbox(my_df, 3)
+#' @return null
+#' @export
+histbox <- function(df, box) {
+    par(mfrow = box)
+    ndf <- dimnames(df)[[2]]
+    
+    for (i in seq_along(ndf)) {
+            data <- na.omit(unlist(df[, i]))
+            hist(data, breaks = "fd", main = paste("Histogram of", ndf[i]),
+                 xlab = ndf[i], freq = FALSE)
+            lines(density(data, kernel = "ep"), col = 'red')
+    }
+    
+    par(mfrow = c(1, 1))
+}
+
+#' Extract key performance results from a model
+#'
+#' @param model A linear model of interest
+#' @examples
+#' model_performance_extraction(my_model)
+#' @return data.frame
+#' @export
+model_performance_extraction <- function(model=NULL) {
+  # Make sure a model was passed
+  if (is.null(model)) {
+    return
+  }
+  
+  data.frame("RSE" = model$sigma,
+             "Adj R2" = model$adj.r.squared,
+             "F-Statistic" = model$fstatistic[1])
+}
+
 ```
 
 ## Overview
@@ -93,7 +167,8 @@ df <- read.csv('datasets/moneyball-training-data.csv')
 df_eval <- read.csv('datasets/moneyball-evaluation-data.csv')
 
 # Remove superfluous TEAM_ from column names
-names(df) <- names(df) %>% str_replace_all('TEAM_', '')
+names(df) <- names(df) %>% 
+  str_replace_all('TEAM_', '')
 ```
 
 ![Variables of Interest](./figures/Variables.png)
@@ -103,7 +178,8 @@ Given that the Index column had no impact on the target variable, number of wins
 
 ```{r echo=FALSE}
 # Drop the INDEX column - this won't be useful
-df <- df %>% dplyr::select(-INDEX)
+df <- df %>% 
+  dplyr::select(-INDEX)
 ```
 
 
@@ -116,9 +192,6 @@ We compiled summary statistics on our data set to better understand the data bef
 # Display summary statistics
 summary(df)
 
-# gather_df <- df %>% gather(key = 'variable', value = 'value', -TARGET_WINS)
-# col_summary <- gather_df %>% group_by(variable) %>% summarise(count = n(), mean = mean(value), med = median(value), sd = sd(value), min = min(value), max = max(value)) %>% as.data.frame()
-# kableExtra::kable(col_summary)
 ```
 
 The first observation is the prevalance of NA's throughout the dataset. On a cursory view, we can quickly see that the average wins per season for a team is about 81, which is exactly half of the total games played in a typical MLB season. Additionally, batters hit, on average, about 9 base hits per game, pitchers throw about 4 base-on-balls (walks) per game, and pitchers record about 5 strikeouts per game, when calculated out over a 162-game season.
@@ -131,7 +204,8 @@ Next, we wanted to get an idea of the distribution profiles for each of the vari
 
 ```{r, fig.height = 10, fig.width = 10, echo=FALSE}
 # Prepare data for ggplot
-gather_df <- df %>% gather(key = 'variable', value = 'value')
+gather_df <- df %>% 
+  gather(key = 'variable', value = 'value')
 
 # Histogram plots of each variable
 ggplot(gather_df) + 
@@ -168,9 +242,9 @@ batting_so_mix <- normalmixEM(df_mix$BATTING_SO,
 # Simple plot to illustrate possible bimodal mix of groups
 plot(batting_so_mix, 
      whichplots = 2,
-     density=TRUE, 
-     main2="BATTING_SO Possible Distributions", 
-     xlab2="BATTING_SO")
+     density = TRUE, 
+     main2 = "BATTING_SO Possible Distributions", 
+     xlab2 = "BATTING_SO")
 ```
 
 ### Boxplots
@@ -179,7 +253,8 @@ In addition to creating histogram distributions, we also elected to use box-plot
 
 ```{r, fig.height = 10, fig.width = 10, echo=FALSE}
 # Prepare data for ggplot
-gather_df <- df %>% gather(key = 'variable', value = 'value')
+gather_df <- df %>% 
+  gather(key = 'variable', value = 'value')
 
 # Boxplots for each variable
 ggplot(gather_df, aes(variable, value)) + 
@@ -225,7 +300,8 @@ Notice that ~91.6% of the rows are missing the BATTING_HBP field - we will just 
 
 ```{r echo=FALSE}
 # Drop the BATTING_HBP field
-df <- df %>% select(-BATTING_HBP)
+df <- df %>% 
+  select(-BATTING_HBP)
 
 # We have chosen to impute the median as there are strong outliers that may skew the mean. Could revisit for advanced imputation via prediction later.
 no_outlier_df <- df
@@ -242,12 +318,15 @@ no_outlier_df$PITCHING_BB <- ifelse(no_outlier_df$PITCHING_BB > 2000, NA, no_out
 # more than 480 errors is an average of 3 per game which is unlikely.
 no_outlier_df$FIELDING_E <- ifelse(no_outlier_df$FIELDING_E > 480, NA, no_outlier_df$FIELDING_E)
 
-clean_df <- no_outlier_df %>% impute(what = 'median') %>% as.data.frame()
+clean_df <- no_outlier_df %>% 
+  impute(what = 'median') %>% as.data.frame()
 
 # From the plots, the team with 0 wins has 0 in multiple other categories. I believe this is missing data, not valid data.
-clean_df <- clean_df %>% filter(TARGET_WINS != 0)
+clean_df <- clean_df %>% 
+  filter(TARGET_WINS != 0)
 
-gather_clean_df <- clean_df %>% gather(key = 'variable', value = 'value', -TARGET_WINS)
+gather_clean_df <- clean_df %>% 
+  gather(key = 'variable', value = 'value', -TARGET_WINS)
 ```
 
 ### Feature-Target Correlations
@@ -274,6 +353,8 @@ corrplot(correlation, 'ellipse', type = 'lower', order = 'hclust',
 ```
 
 We can see that some variables are highly correlated with one another, such as PITCHING_BB and BATTING_BB. When we start considering features for our models, we'll need to account for the correlations between features and avoid including pairs with strong correlations.
+
+As a note, this dataset is challenging as many of the predictive features go hand-in-hand with other feature and multicolinearity will be a problem.  Better teams will see all positive features go up and negative features go down and vice versa.  Many features are also inherently associated, for example, as batter strike outs increase, we would expect a decrease in hit metrics.  As Base Hits increase, we would expect to see increases in the 2B, 3B and 4B columns, etc. 
 
 ## 2. Data Preparation
 
@@ -328,18 +409,6 @@ df_temp$BASERUN_SB_transform <- log(clean_df$BASERUN_SB)
 
 df_temp <- df_temp[, 2:13]
 
-histbox <- function(df, box) {
-    par(mfrow = box)
-    ndf <- dimnames(df)[[2]]
-    for (i in seq_along(ndf)) {
-            data <- na.omit(unlist(df[, i]))
-            hist(data, breaks = "fd", main = paste("Histogram of", ndf[i]),
-                 xlab = ndf[i], freq = FALSE)
-            lines(density(data, kernel = "ep"), col = 'red')
-    }
-    par(mfrow = c(1, 1))
-}
-
 histbox(df_temp, c(6, 2))
 ```
 
@@ -349,6 +418,7 @@ histbox(df_temp, c(6, 2))
 With our transformations complete, we can now add these into our `clean_df` dataframe and continue on to build our models.
 
 ```{r}
+# Build clean dataframe with transformation
 clean_df <- data.frame(cbind(clean_df, 
                         BATTING_3B_transform = df_temp$BATTING_3B_transform,
                         BATTING_HR_transform = df_temp$BATTING_HR_transform,
@@ -359,6 +429,7 @@ clean_df <- data.frame(cbind(clean_df,
 
 is.na(clean_df) <- sapply(clean_df, is.infinite)
 
+# Impute missing value with the mean
 mean = mean(clean_df$BATTING_3B_transform, na.rm = TRUE)
 mean2 = mean(clean_df$BASERUN_SB_transform, na.rm = TRUE)
 mean3 = mean(clean_df$PITCHING_SO_transform, na.rm = TRUE)
@@ -407,9 +478,9 @@ As mentioned above, below is our initial multiple linear regression model that i
 ```{r echo=FALSE}
 # Splitting the dataset into train/testing set with 80/20 split
 set.seed(3)
-df_split<-initial_split(clean_df, prop = 0.8)
-df_train<-training(df_split)
-df_test<-testing(df_split)
+df_split <- initial_split(clean_df, prop = 0.8)
+df_train <- training(df_split)
+df_test <- testing(df_split)
 
 # Model 1 - Include all features and leverage stepAIC to help identify ideal features
 
@@ -417,30 +488,16 @@ multi_lm <- lm(TARGET_WINS ~ BATTING_H + BATTING_2B + BATTING_3B + BATTING_HR + 
 (lm_s <- summary(multi_lm))
 confint(multi_lm)
 residPlot(lm_s)
-
-# Model 1 - Simple `caret` plot to show feature importance
-
-VarImpPlot<-function(LINEARMODEL,TITLE){
-  varImp(LINEARMODEL) %>% as.data.frame() %>% 
-    ggplot(aes(x = reorder(rownames(.),desc(Overall)), y = Overall))+
-    geom_col(aes(fill = Overall))+
-    theme(panel.background = element_blank(),
-          panel.grid = element_blank(),
-          axis.text.x = element_text(angle = 90))+
-    scale_fill_gradient()+
-    labs(title = TITLE,
-         x = "Parameter",
-         y = "Relative Importance")
-}
-
 ```
 
  
 We can explicitly call out our variable importance using the Caret package which will determine our feature importance for each of the multiple linear regression models individually.
 
 ```{r echo=FALSE}
-VarImpPlot(multi_lm, "Model 1 LM Variable Importance")
+# Display Variable feature importance plot
+variableImportancePlot(multi_lm, "Model 1 LM Variable Importance")
 
+# print variable inflation factor score
 print('VIF scores of predictors')
 
 VIF(multi_lm)
@@ -451,7 +508,7 @@ VIF(multi_lm)
 In our second model, below, we decided to use stepwise selection in order to help us determine the optimal set of features from our original, cleaned dataset.
 
 ```{r echo=FALSE}
-
+# Build model 2 - this is Model 1 with only significant features (using stepAIC)
 mult_lm_final <- stepAIC(multi_lm, direction = "both",
                          scope = list(upper = multi_lm, lower = ~ 1),
                          scale = 0, trace = FALSE)
@@ -465,21 +522,14 @@ residPlot(lmf_s)
 
 
 ```{r echo=FALSE}
-VarImpPlot(mult_lm_final, "Model 2 LM Variable Importance")
+# Display Variable feature importance plot
+variableImportancePlot(mult_lm_final, "Model 2 LM Variable Importance")
 
+# print variable inflation factor score
 print('VIF scores of predictors')
 
 VIF(mult_lm_final)
 ```
-
-We can also use a simple decision tree to help visualize feature importance.
-
-```{r echo=FALSE}
-# Model 2 - Simple decision tree for feature importance
-dt_m <- caret::train(TARGET_WINS ~ ., data = clean_df, tuneLength = 19L, method = 'rpart2')
-rpart.plot(dt_m$finalModel, type = 1L)
-```
-
 
 ### Model 3
 
@@ -513,8 +563,9 @@ We can assess variable importance of our model with our original dataset (model 
 
 ```{r echo=FALSE}
 # Model 3 - Show feature importance in final model after stepAIC
-VarImpPlot(mult_lm_final_2, "Model 3 LM Variable Importance")
+variableImportancePlot(mult_lm_final_2, "Model 3 LM Variable Importance")
 
+# Model 3 - show Variance Inflation Factor score
 print('VIF scores of predictors')
 
 VIF(mult_lm_final_2)
@@ -537,20 +588,19 @@ From the exploratory data analysis we saw that many of the predictor variables w
 
 ```{r}
 
-model_performance_extraction<- function(MODEL){
-
-  data.frame("RSE" = MODEL$sigma,
-           "Adj R2" = MODEL$adj.r.squared,
-           "F-Statistic" = MODEL$fstatistic[1])
-}
-SummaryTable<-
-bind_rows(
+# Build summary table with each model performance metrics
+SummaryTable <- bind_rows(
   model_performance_extraction(lm_s),
   model_performance_extraction(lmf_s),
   model_performance_extraction(lmf_s_2)
 ) 
-rownames(SummaryTable)<-c("Model 1", "Model 2", "Model 3")
-SummaryTable %>% kable() %>% 
+
+# Add row names
+rownames(SummaryTable) <- c("Model 1", "Model 2", "Model 3")
+
+# Display nice format table
+SummaryTable %>% 
+  kable() %>% 
   kable_styling(
     bootstrap_options = c("hover", "condensed", "responsive"),
     full_width = F)
@@ -559,48 +609,48 @@ SummaryTable %>% kable() %>%
 The following figure represents the performance of 3 of the models on both the testing and on the training dataset. for this multiple linear regression problem, the adjusted R2 value was used as the metric for performance on predicting the target wins.
 
 ```{r}
-
-results<-multi_lm %>%
-  predict(df_train) %>% as.data.frame() %>% 
-  mutate(Predicted = df_train$TARGET_WINS,
-         model = "Model 1") %>% 
+# Build prediction results dataset for plotting (each model with training and test data)
+results <- multi_lm %>%
+  predict(df_train) %>% 
+  as.data.frame() %>% 
+  mutate(Predicted = df_train$TARGET_WINS, model = "Model 1") %>% 
   bind_rows(mult_lm_final %>% 
-              predict(df_train) %>% as.data.frame() %>% 
-              mutate(Predicted = df_train$TARGET_WINS,
-                     model = "Model 2"),
+              predict(df_train) %>% 
+              as.data.frame() %>% 
+              mutate(Predicted = df_train$TARGET_WINS, model = "Model 2"),
             mult_lm_final_2 %>% 
-              predict(df_train) %>% as.data.frame() %>% 
-              mutate(Predicted = df_train$TARGET_WINS,
-                     model = "Model 3")) %>% 
-  rename("Observed" = ".") %>% mutate(dataset = "Training Set") %>% 
+              predict(df_train) %>% 
+              as.data.frame() %>% 
+              mutate(Predicted = df_train$TARGET_WINS, model = "Model 3")) %>% 
+  rename("Observed" = ".") %>% 
+  mutate(dataset = "Training Set") %>% 
   bind_rows(
-    results_test<-multi_lm %>%
-    predict(df_test) %>% as.data.frame() %>%
-    mutate(Predicted = df_test$TARGET_WINS,
-           model = "Model 1") %>% 
-    bind_rows(mult_lm_final %>% 
-                predict(df_test) %>% as.data.frame() %>% 
-                mutate(Predicted = df_test$TARGET_WINS,
-                       model = "Model 2"),
-              mult_lm_final_2 %>% 
-                predict(df_test) %>% as.data.frame() %>% 
-                mutate(Predicted = df_test$TARGET_WINS,
-                       model = "Model 3")) %>% 
-    rename("Observed" = ".") %>% mutate(dataset = "Testing Set")
+    results_test <- multi_lm %>%
+      predict(df_test) %>% 
+      as.data.frame() %>%
+      mutate(Predicted = df_test$TARGET_WINS, model = "Model 1") %>% 
+      bind_rows(mult_lm_final %>% 
+                  predict(df_test) %>% 
+                  as.data.frame() %>% 
+                  mutate(Predicted = df_test$TARGET_WINS, model = "Model 2"),
+                mult_lm_final_2 %>% 
+                  predict(df_test) %>% as.data.frame() %>% 
+                  mutate(Predicted = df_test$TARGET_WINS, model = "Model 3")) %>% 
+      rename("Observed" = ".") %>% 
+      mutate(dataset = "Testing Set")
   )
 
-
+# Plot each model with datapoints, model prediction line and R^2
 results %>% 
-  ggplot(mapping = aes(x = Observed, y = Predicted))+
-  geom_point(pch =21, alpha = 0.3, fill = "skyblue")+
-  geom_smooth(method = "lm", color = "red3")+
-  facet_wrap(dataset~model)+
+  ggplot(mapping = aes(x = Observed, y = Predicted)) +
+  geom_point(pch =21, alpha = 0.3, fill = "skyblue") +
+  geom_smooth(method = "lm", color = "red3") +
+  facet_wrap(dataset~model) +
   stat_poly_eq(aes(label = paste(..adj.rr.label.., sep = "~~~")), 
                    label.x.npc = "left", label.y.npc = .9,
                    formula = y~x, parse = TRUE, size = 3.5)+
   theme(panel.background = element_blank(),
         panel.grid = element_blank())
-  
 
 ```
 
@@ -682,6 +732,9 @@ library(tidyverse)
 library(dplyr)
 library(reshape2)
 library(mixtools)
+library(tidymodels)
+library(ggpmisc)
+library(regclass)
 
 #' Print a side-by-side Histogram and QQPlot of Residuals
 #'
@@ -691,6 +744,11 @@ library(mixtools)
 #' @return null
 #' @export
 residPlot <- function(model) {
+  # Make sure a model was passed
+  if (is.null(model)) {
+    return
+  }
+  
   layout(matrix(c(1,1,2,3), 2, 2, byrow = TRUE))
   plot(residuals(model))
   hist(model[["residuals"]], freq = FALSE, breaks = "fd", main = "Residual Histogram",
@@ -702,6 +760,74 @@ residPlot <- function(model) {
   par(mfrow = c(1, 1))
 }
 
+#' Print a Variable Importance Plot for the provided model
+#'
+#' @param model The model
+#' @param chart_title The Title to show on the plot
+#' @examples
+#' variableImportancePlot(myLinearModel, 'My Title)
+#' @return null
+#' @export
+variableImportancePlot <- function(model=NULL, chart_title='Variable Importance Plot') {
+  # Make sure a model was passed
+  if (is.null(model)) {
+    return
+  }
+  
+  # use caret and gglot to print a variable importance plot
+  varImp(model) %>% as.data.frame() %>% 
+    ggplot(aes(x = reorder(rownames(.), desc(Overall)), y = Overall)) +
+    geom_col(aes(fill = Overall)) +
+    theme(panel.background = element_blank(),
+          panel.grid = element_blank(),
+          axis.text.x = element_text(angle = 90)) +
+    scale_fill_gradient() +
+    labs(title = chart_title,
+         x = "Parameter",
+         y = "Relative Importance")
+}
+
+
+#' Print a Facet Chart of histograms
+#'
+#' @param df Dataset
+#' @param box Facet size (rows)
+#' @examples
+#' histbox(my_df, 3)
+#' @return null
+#' @export
+histbox <- function(df, box) {
+    par(mfrow = box)
+    ndf <- dimnames(df)[[2]]
+    
+    for (i in seq_along(ndf)) {
+            data <- na.omit(unlist(df[, i]))
+            hist(data, breaks = "fd", main = paste("Histogram of", ndf[i]),
+                 xlab = ndf[i], freq = FALSE)
+            lines(density(data, kernel = "ep"), col = 'red')
+    }
+    
+    par(mfrow = c(1, 1))
+}
+
+#' Extract key performance results from a model
+#'
+#' @param model A linear model of interest
+#' @examples
+#' model_performance_extraction(my_model)
+#' @return data.frame
+#' @export
+model_performance_extraction <- function(model=NULL) {
+  # Make sure a model was passed
+  if (is.null(model)) {
+    return
+  }
+  
+  data.frame("RSE" = model$sigma,
+             "Adj R2" = model$adj.r.squared,
+             "F-Statistic" = model$fstatistic[1])
+}
+
 # =====================================================================================
 # Load Data set
 # =====================================================================================
@@ -711,10 +837,12 @@ df <- read.csv('datasets/moneyball-training-data.csv')
 df_eval <- read.csv('datasets/moneyball-evaluation-data.csv')
 
 # Remove superfluous TEAM_ from column names
-names(df) <- names(df) %>% str_replace_all('TEAM_', '')
-
+names(df) <- names(df) %>% 
+  str_replace_all('TEAM_', '')
+  
 # Drop the INDEX column - this won't be useful
-df <- df %>% dplyr::select(-INDEX)
+df <- df %>% 
+  dplyr::select(-INDEX)
 
 # =====================================================================================
 # Summary Stats 
@@ -728,14 +856,15 @@ summary(df)
 # =====================================================================================
 
 # Prepare data for ggplot
-gather_df <- df %>% gather(key = 'variable', value = 'value')
+gather_df <- df %>% 
+  gather(key = 'variable', value = 'value')
 
 # Histogram plots of each variable
 ggplot(gather_df) + 
   geom_histogram(aes(x=value, y = ..density..), bins=30) + 
   geom_density(aes(x=value), color='blue') +
   facet_wrap(. ~variable, scales='free', ncol=4)
-  
+
 # Select BATTING_SO column and remove any missing data
 df_mix <- df %>% 
   dplyr::select(BATTING_SO) %>%
@@ -751,16 +880,17 @@ batting_so_mix <- normalmixEM(df_mix$BATTING_SO,
 # Simple plot to illustrate possible bimodal mix of groups
 plot(batting_so_mix, 
      whichplots = 2,
-     density=TRUE, 
-     main2="BATTING_SO Possible Distributions", 
-     xlab2="BATTING_SO")
+     density = TRUE, 
+     main2 = "BATTING_SO Possible Distributions", 
+     xlab2 = "BATTING_SO")
      
 # =====================================================================================
 # Boxplots 
 # =====================================================================================
 
 # Prepare data for ggplot
-gather_df <- df %>% gather(key = 'variable', value = 'value')
+gather_df <- df %>% 
+  gather(key = 'variable', value = 'value')
 
 # Boxplots for each variable
 ggplot(gather_df, aes(variable, value)) + 
@@ -784,7 +914,8 @@ missing_pct <- round(missing / nrow(df) * 100, 2)
 stack(sort(missing_pct, decreasing = TRUE))
 
 # Drop the BATTING_HBP field
-df <- df %>% select(-BATTING_HBP)
+df <- df %>% 
+  select(-BATTING_HBP)
 
 # We have chosen to impute the median as there are strong outliers that may skew the mean. Could revisit for advanced imputation via prediction later.
 no_outlier_df <- df
@@ -801,12 +932,15 @@ no_outlier_df$PITCHING_BB <- ifelse(no_outlier_df$PITCHING_BB > 2000, NA, no_out
 # more than 480 errors is an average of 3 per game which is unlikely.
 no_outlier_df$FIELDING_E <- ifelse(no_outlier_df$FIELDING_E > 480, NA, no_outlier_df$FIELDING_E)
 
-clean_df <- no_outlier_df %>% impute(what = 'median') %>% as.data.frame()
+clean_df <- no_outlier_df %>% 
+  impute(what = 'median') %>% as.data.frame()
 
 # From the plots, the team with 0 wins has 0 in multiple other categories. I believe this is missing data, not valid data.
-clean_df <- clean_df %>% filter(TARGET_WINS != 0)
+clean_df <- clean_df %>% 
+  filter(TARGET_WINS != 0)
 
-gather_clean_df <- clean_df %>% gather(key = 'variable', value = 'value', -TARGET_WINS)
+gather_clean_df <- clean_df %>% 
+  gather(key = 'variable', value = 'value', -TARGET_WINS)
 
 # =====================================================================================
 # Feature-Target Correlations 
@@ -828,6 +962,7 @@ corrplot(correlation, 'ellipse', type = 'lower', order = 'hclust',
 # Transform non-normal variables 
 # =====================================================================================
          
+
 # created empty data frame to store transformed variables
 df_temp <- data.frame(matrix(ncol = 1, nrow = length(clean_df$TARGET_WINS)))
 
@@ -859,116 +994,167 @@ df_temp$BASERUN_SB_transform <- log(clean_df$BASERUN_SB)
 
 df_temp <- df_temp[, 2:13]
 
-histbox <- function(df, box) {
-    par(mfrow = box)
-    ndf <- dimnames(df)[[2]]
-    for (i in seq_along(ndf)) {
-            data <- na.omit(unlist(df[, i]))
-            hist(data, breaks = "fd", main = paste("Histogram of", ndf[i]),
-                 xlab = ndf[i], freq = FALSE)
-            lines(density(data, kernel = "ep"), col = 'red')
-    }
-    par(mfrow = c(1, 1))
-}
-
 histbox(df_temp, c(6, 2))
 
 # =====================================================================================
-# Model 1 (with and without stepAIC)
+# Final Cleaned Dataframe with transformations
 # =====================================================================================
 
+# Build clean dataframe with transformation
+clean_df <- data.frame(cbind(clean_df, 
+                        BATTING_3B_transform = df_temp$BATTING_3B_transform,
+                        BATTING_HR_transform = df_temp$BATTING_HR_transform,
+                        BASERUN_SB_transform = df_temp$BASERUN_SB_transform,
+                        PITCHING_BB_transform = df_temp$PITCHING_BB_transform,
+                        PITCHING_SO_transform = df_temp$PITCHING_SO_transform,
+                        FIELDING_E_transform = df_temp$FIELDING_E_transform))
+
+is.na(clean_df) <- sapply(clean_df, is.infinite)
+
+# Impute missing value with the mean
+mean = mean(clean_df$BATTING_3B_transform, na.rm = TRUE)
+mean2 = mean(clean_df$BASERUN_SB_transform, na.rm = TRUE)
+mean3 = mean(clean_df$PITCHING_SO_transform, na.rm = TRUE)
+
+clean_df$BATTING_3B_transform[is.na(clean_df$BATTING_3B_transform)] <- mean
+clean_df$BASERUN_SB_transform[is.na(clean_df$BASERUN_SB_transform)] <- mean2
+clean_df$PITCHING_SO_transform[is.na(clean_df$PITCHING_SO_transform)] <- mean3
+
+# =====================================================================================
+# Model 1 (without stepAIC)
+# =====================================================================================
+
+# Splitting the dataset into train/testing set with 80/20 split
+set.seed(3)
+df_split <- initial_split(clean_df, prop = 0.8)
+df_train <- training(df_split)
+df_test <- testing(df_split)
+
 # Model 1 - Include all features and leverage stepAIC to help identify ideal features
-multi_lm <- lm(TARGET_WINS ~ ., clean_df)
+
+multi_lm <- lm(TARGET_WINS ~ BATTING_H + BATTING_2B + BATTING_3B + BATTING_HR + BATTING_BB + BATTING_SO + BASERUN_SB + BASERUN_CS + PITCHING_H + PITCHING_HR + PITCHING_BB + PITCHING_SO + FIELDING_E + FIELDING_DP, df_train)
 (lm_s <- summary(multi_lm))
 confint(multi_lm)
 residPlot(lm_s)
 
+# Model 1 - Display Variable feature importance plot
+variableImportancePlot(multi_lm, "Model 1 LM Variable Importance")
+
+# model 1 - print variable inflation factor score
+print('VIF scores of predictors')
+
+VIF(multi_lm)
+
+# =====================================================================================
+# Model 2 (with stepAIC)
+# =====================================================================================
+
+# Build model 2 - this is Model 1 with only significant features (using stepAIC)
 mult_lm_final <- stepAIC(multi_lm, direction = "both",
                          scope = list(upper = multi_lm, lower = ~ 1),
                          scale = 0, trace = FALSE)
-
-# Display Model 1 Summary
+# Display Model 2 Summary
 (lmf_s <- summary(mult_lm_final))
 
-# Display Model 1 REsidual plots
+# Display Model 2 REsidual plots
 residPlot(lmf_s)
 
-# Model 1 - Simple decision tree for feature importance
-dt_m <- caret::train(TARGET_WINS ~ ., data = clean_df, tuneLength = 19L, method = 'rpart2')
-rpart.plot(dt_m$finalModel, type = 1L)
+# model 2 - Display Variable feature importance plot
+variableImportancePlot(mult_lm_final, "Model 2 LM Variable Importance")
 
-# Model 1 - Simple `caret` plot to show feature importance
-VarImpPlot<-function(LINEARMODEL,TITLE){
-  varImp(LINEARMODEL) %>% as.data.frame() %>% 
-    ggplot(aes(x = reorder(rownames(.),desc(Overall)), y = Overall))+
-    geom_col(aes(fill = Overall))+
-    theme(panel.background = element_blank(),
-          panel.grid = element_blank(),
-          axis.text.x = element_text(angle = 90))+
-    scale_fill_gradient()+
-    labs(title = TITLE,
-         x = "Parameter",
-         y = "Relative Importance")
-}
+# model 2 - print variable inflation factor score
+print('VIF scores of predictors')
+
+VIF(mult_lm_final)
 
 # =====================================================================================
-# Model 2 (with and without stepAIC)
+# Model 3 (with stepAIC and transformed features)
 # =====================================================================================
 
-# Model 2 - Create data frame with Transformed features
-clean_trans_df <- data.frame(cbind(TARGET_WINS = clean_df$TARGET_WINS, 
-                        BATTING_H = clean_df$BATTING_H,
-                        BATTING_2B = clean_df$BATTING_2B,
-                        BATTING_3B_transform = df_temp$BATTING_3B_transform,
-                        BATTING_HR_transform = df_temp$BATTING_HR_transform,
-                        BATTING_BB = clean_df$BATTING_BB,
-                        BATTING_SO = clean_df$BATTING_SO,
-                        BASERUN_SB_transform = df_temp$BASERUN_SB_transform,
-                        BASERUN_CS = clean_df$BASERUN_CS,
-                        PITCHING_H = clean_df$PITCHING_H,
-                        PITCHING_HR = clean_df$PITCHING_HR,
-                        PITCHING_BB_transform = df_temp$PITCHING_BB_transform,
-                        PITCHING_SO_transform = df_temp$PITCHING_SO_transform,
-                        FIELDING_E_transform = df_temp$FIELDING_E_transform,
-                        FIELDING_DP = clean_df$FIELDING_DP))
+# Model 3 - Build linear model
+multi_lm_2 <- lm(TARGET_WINS ~ BATTING_H + BATTING_2B + BATTING_3B_transform + BATTING_HR_transform + BATTING_BB + BATTING_SO + BASERUN_SB_transform + BASERUN_CS + PITCHING_H + PITCHING_HR + PITCHING_BB_transform + PITCHING_SO_transform + FIELDING_E_transform + FIELDING_DP, df_train)
 
-is.na(clean_trans_df) <- sapply(clean_trans_df, is.infinite)
-
-mean = mean(clean_trans_df$BATTING_3B_transform, na.rm = TRUE)
-mean2 = mean(clean_trans_df$BASERUN_SB_transform, na.rm = TRUE)
-mean3 = mean(clean_trans_df$PITCHING_SO_transform, na.rm = TRUE)
-
-clean_trans_df$BATTING_3B_transform[is.na(clean_trans_df$BATTING_3B_transform)] <- mean
-clean_trans_df$BASERUN_SB_transform[is.na(clean_trans_df$BASERUN_SB_transform)] <- mean2
-clean_trans_df$PITCHING_SO_transform[is.na(clean_trans_df$PITCHING_SO_transform)] <- mean3
-
-# Model 2 - Build linear model
-multi_lm_2 <- lm(TARGET_WINS ~ ., clean_trans_df)
-
-# Model 2 - Show model summary info
+# Model 3 - Show model summary info
 (lm_s_2 <- summary(multi_lm_2))
 
-# Model 2 - Show Confidence and Residual Plots
+# Model 3 - Show Confidence and Residual Plots
 confint(multi_lm_2)
 residPlot(lm_s_2)
 
-# Model 2 - use stepAIC to select significant features
+# Model 3 - use stepAIC to select significant features
 mult_lm_final_2 <- stepAIC(multi_lm_2, direction = "both",
                          scope = list(upper = multi_lm_2, lower = ~ 1),
                          scale = 0, trace = FALSE)
 
-# Model 2 - Show summary of revised model with only significant features included
-(lmf_s_2 <- summary(mult_lm_final_2))
+# Model 3 - Show feature importance in final model after stepAIC
+variableImportancePlot(mult_lm_final_2, "Model 3 LM Variable Importance")
 
-# model 2 - Show residual plots
-residPlot(lmf_s_2)
+# Model 3 - show Variance Inflation Factor score
+print('VIF scores of predictors')
 
-# Model 2 - Show feature importance in final model after stepAIC
-VarImpPlot(mult_lm_final_2, "Model 2 LM Variable Importance")
+VIF(mult_lm_final_2)
 
 # =====================================================================================
 # Select Models
 # =====================================================================================
 
-```
+# Build summary table with each model performance metrics
+SummaryTable <- bind_rows(
+  model_performance_extraction(lm_s),
+  model_performance_extraction(lmf_s),
+  model_performance_extraction(lmf_s_2)
+) 
 
+# Add row names
+rownames(SummaryTable) <- c("Model 1", "Model 2", "Model 3")
+
+# Display nice format table
+SummaryTable %>% 
+  kable() %>% 
+  kable_styling(
+    bootstrap_options = c("hover", "condensed", "responsive"),
+    full_width = F)
+    
+# Build prediction results dataset for plotting (each model with training and test data)
+results <- multi_lm %>%
+  predict(df_train) %>% 
+  as.data.frame() %>% 
+  mutate(Predicted = df_train$TARGET_WINS, model = "Model 1") %>% 
+  bind_rows(mult_lm_final %>% 
+              predict(df_train) %>% 
+              as.data.frame() %>% 
+              mutate(Predicted = df_train$TARGET_WINS, model = "Model 2"),
+            mult_lm_final_2 %>% 
+              predict(df_train) %>% 
+              as.data.frame() %>% 
+              mutate(Predicted = df_train$TARGET_WINS, model = "Model 3")) %>% 
+  rename("Observed" = ".") %>% 
+  mutate(dataset = "Training Set") %>% 
+  bind_rows(
+    results_test <- multi_lm %>%
+      predict(df_test) %>% 
+      as.data.frame() %>%
+      mutate(Predicted = df_test$TARGET_WINS, model = "Model 1") %>% 
+      bind_rows(mult_lm_final %>% 
+                  predict(df_test) %>% 
+                  as.data.frame() %>% 
+                  mutate(Predicted = df_test$TARGET_WINS, model = "Model 2"),
+                mult_lm_final_2 %>% 
+                  predict(df_test) %>% as.data.frame() %>% 
+                  mutate(Predicted = df_test$TARGET_WINS, model = "Model 3")) %>% 
+      rename("Observed" = ".") %>% 
+      mutate(dataset = "Testing Set")
+  )
+
+# Plot each model with datapoints, model prediction line and R^2
+results %>% 
+  ggplot(mapping = aes(x = Observed, y = Predicted)) +
+  geom_point(pch =21, alpha = 0.3, fill = "skyblue") +
+  geom_smooth(method = "lm", color = "red3") +
+  facet_wrap(dataset~model) +
+  stat_poly_eq(aes(label = paste(..adj.rr.label.., sep = "~~~")), 
+                   label.x.npc = "left", label.y.npc = .9,
+                   formula = y~x, parse = TRUE, size = 3.5)+
+  theme(panel.background = element_blank(),
+        panel.grid = element_blank())
+```
