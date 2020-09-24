@@ -4,14 +4,14 @@ subtitle: 'Moneyball Linear Regression'
 author: 'Zach Alexander, Sam Bellows, Donny Lofland, Joshua Registe, Neil Shah, Aaron Zalki'
 data: '09/02/2020'
 output:
+  pdf_document:
+    extra_dependencies: ["geometry", "multicol", "multirow", "xcolor"]
   html_document:
     theme: cerulean
     highlight: pygments
     css: ./lab.css
     toc: true
     toc_float: true
-  pdf_document:
-    extra_dependencies: ["geometry", "multicol", "multirow", "xcolor"]
 ---
 
 Source code: [https://github.com/djlofland/DS621_F2020_Group3/tree/master/Homework_1](https://github.com/djlofland/DS621_F2020_Group3/tree/master/Homework_1)
@@ -145,9 +145,9 @@ model_performance_extraction <- function(model=NULL) {
 
 ## Overview
 
-In professional sports, there is a huge interest in attempting to leverage historic statistics to both predict future outcomes (wins/losses) and explore opportunities for tuning or improving a team or individual's performance.  This data-driven approach to sports has gained a large following over the last decade and entered mass media in the form of fantasy leagues, movies (e.g. Moneyball), and websites/podcasts (e.g. FiveThirtyEight).  In this analysis, we will be using a classic baseball data set with the goal to build several different models capable of predicting team wins over a season given on other team stats during that season (i.e. homeruns, strikeouts, base hits, etc).  
+In professional sports, there is a huge interest in attempting to leverage historic statistics to both predict future outcomes (wins/losses) and explore opportunities for tuning or improving a team or individual's performance.  This data-driven approach to sports has gained a large following over the last decade and entered mass media in the form of fantasy leagues, movies (e.g. Moneyball), and websites/podcasts (e.g. FiveThirtyEight).  In this analysis, we will be using a classic baseball data set with the goal of building several different models capable of predicting team wins over a season given other team stats during that season (i.e. homeruns, strikeouts, base hits, etc).  
 
-We will first explore the data looking for issues or challenges (i.e. missing data, outliers, possible coding errors, multicollinearlity, etc).  Once we have a handle on the data, we will apply any necessary cleaning steps.  Once we have a reasonable dataset to work with, we will build and evaluate three different linear models that predict seasonal wins.  Our dataset includes both training data and evaluation data - we will training using the main training data, then evaluate models based on how well they perform against the holdout evaluation data.  Finally we will select a final model that offers the best compromise for accuracy and simplicity. 
+We will first explore the data looking for issues or challenges (i.e. missing data, outliers, possible coding errors, multicollinearlity, etc).  Once we have a handle on the data, we will apply any necessary cleaning steps.  Once we have a reasonable dataset to work with, we will build and evaluate three different linear models that predict seasonal wins.  Our dataset includes both training data and evaluation data - we will train using the main training data, then evaluate models based on how well they perform against the holdout evaluation data.  Finally we will select a final model that offers the best compromise between accuracy and simplicity. 
 
 
 ## 1. Data Exploration
@@ -159,7 +159,7 @@ You should have your own thoughts on what to tell the boss. These are just ideas
 
 ### Dataset
 
-The moneyball training set contains 17 columns--with one column our target variable "TARGET_WINS" and 2276 rows, covering baseball team performance statistics from the years 1871 to 2006 inclusive. The data has been adjusted to match the performance of a typical 162 game season. The data-set was entirely numerical and contained no categorical variables.
+The moneyball training set contains 17 columns - including the target variable "TARGET_WINS" - and 2276 rows, covering baseball team performance statistics from the years 1871 to 2006 inclusive. The data has been adjusted to match the performance of a typical 162 game season. The data-set was entirely numerical and contained no categorical variables.
 
 Below, we created a chart that describes each variable in the dataset and the theoretical effect it will have on the number of wins projected for a team.
 
@@ -216,15 +216,15 @@ ggplot(gather_df) +
   facet_wrap(. ~variable, scales='free', ncol=4)
 ```
 
-The distribution profiles sure the prevalence of kurtosis, specifically right skew in variables BASERUN_CS, BASERUN_CB, FIELDING_E, PITCHING_RB, PITCHING_H and PITCHING_SO. These deviations from a traditional normal distribution can be problematic for linear regression assumptions, and thus we might need to transform the data.  Furthermore BATTING_HBP, BATTING_HR, PITCHING_HR and BATTING_SO appear bimodal. Bimodal features in a dataset are both problematic and interesting and potentially an area of opportunity and exploration.  Bimodal data suggests that there are possibly two different groups or classes of baseball season data.  During those seasons, teams tended to score higher or lower for the bimodal feature.  
+The distribution profiles show the prevalence of kurtosis, specifically right skew in variables BASERUN_CS, BASERUN_SB, FIELDING_E, PITCHING_BB, PITCHING_H and PITCHING_SO. These deviations from a traditional normal distribution can be problematic for linear regression assumptions, and thus we might need to transform the data.  Furthermore BATTING_HBP, BATTING_HR, PITCHING_HR and BATTING_SO appear bimodal. Bimodal features in a dataset are both problematic and interesting and potentially an area of opportunity and exploration.  Bimodal data suggests that there are possibly two different groups or classes of baseball season data.  During those seasons, teams tended to score higher or lower for the bimodal feature.  
 
-Two possibilities immediately come to mind.  The bimodal nature could be caused by a rule change such that games before a specific time point had lower values and games after that point had higher values.  Unfortunately, we do not have any features on which year the data is associated.  The second is that teams either do well or not for the given KPI.  Let's consider BATTING_SO (Batters striking out) - if some teams have better players, they might have a reasonable normal distribution lower than those teams with worse players.  We do know that certain teams are able to attract and pay for better players (let's call them Tier 1) and some teams with lower budgets and less visibility (let's call them Tier 2). Even with a given team, they might have "good years" and "off years".  It's possible the distribution of BATTING_SO represents the overlap or superposition of this two distinct curves representing different classes of team.
+Two possibilities immediately come to mind.  The bimodal nature could be caused by a rule change such that games before a specific time point had lower values and games after that point had higher values.  Unfortunately, we do not have any features that record the year of the data.  The second is that teams either do well or not for the given KPI.  Let's consider BATTING_SO (Batters striking out) - if some teams have better players, they might have a reasonable normal distribution lower than those teams with worse players.  We do know that certain teams are able to attract and pay for better players (let's call them Tier 1) than some teams with lower budgets and less visibility (let's call them Tier 2). Even with a given team, they might have "good years" and "off years".  It's possible the distribution of BATTING_SO represents the overlap or superposition of this two distinct curves representing different classes of team.
 
 While we don't tackle feature engineering in this analysis, if we were performing a more in-depth analysis, these are some possible options.
 
 * We have no data linking rows with specific years.  We might attempt to locate additional data sets that link performance to year and leverage change point detection to see if bimodal relationships are linked with all teams at specific points in time.  If change points are present, that suggests something changed affecting all teams (e.g. new rules that improved or lowered the bimodal feature).  We would then create a new categorical feature indicating which class the row data came from, before or after the change point.
 
-* We have no data lining rows with specific teams so cannot directly tell if there are more than one Tier of team.  Instead, we could explore whether there are correlation between the bimodal nature across different bimodal features (i.e. do rows with lower BATTING_HR line up with rows with lower/higher BATTING_SO) within rows. If there are strong correlations between bimodal features, that suggests there might be two classes of teams (or yearly team performance) and we could create a new categorical variable(s) indicating the probable Tier per row.  Alternatively, we could assign a new numerical feature indicating the probability a row fell into which class.
+* We have no data linking rows with specific teams so cannot directly tell if there are more than one Tier of team.  Instead, we could explore whether there are correlation between the bimodal nature across different bimodal features (i.e. do rows with lower BATTING_HR line up with rows with lower/higher BATTING_SO) within rows. If there are strong correlations between bimodal features, that suggests there might be two classes of teams (or yearly team performance) and we could create a new categorical variable(s) indicating the probable Tier per row.  Alternatively, we could assign a new numerical feature indicating the probability a row fell into which class.
 
 * R provides a package, `mixtools` (see R Vignette) which helps regress *mixed models* where data can be subdivided into subgroups.  Here is a quick example showing a possible mix within BATTING_SO:
 
@@ -285,7 +285,7 @@ There is a team with 0 wins in the dataset. This seems unlikely. Many of the hit
 
 The pitching variables also include many 0's, for instance there are multiple teams with 0 strikeouts by their pitchers over the season which is extremely unlikely. The pitching data also includes strange outliers such as a team logging 20,000 strikeouts, that would be an average of 160 strikeouts per game which is impossible. Also team pitching walks and team pitching hits have strange outliers.
 
-Lastly, the error variable makes little sense. From my experience watching baseball, teams usually score 2 or less errors per game, which would lead to an overall team error of approximately 320 over the course of a season, which does not match the scale of the error variable.
+Lastly, the error variable makes little sense. From our experience watching baseball, teams usually score 2 or less errors per game, which would lead to an overall team error of approximately 320 over the course of a season, which does not match the scale of the error variable. It is possible that errors have become much less frequent over time which would account for the high error data.
 
 ### Missing Data
 
@@ -298,7 +298,7 @@ missing_pct <- round(missing / nrow(df) * 100, 2)
 stack(sort(missing_pct, decreasing = TRUE))
 ```
 
-Notice that ~91.6% of the rows are missing the BATTING_HBP field - we will just drop this column from consideration.  The columns BASERUN_CS (base run caught stealing) and BASERUN_SB (stolen bases) both have missing values.  According to baseball history, stolen bases weren't tracked officially until 1887, so some of the missing data could be from 1871-1886.  We will impute those value.  There are a high percentage of missing BATTING_SO (batter strike outs) and PITCHING_SO (pitching strike outs) which seem highly unlikely - we will also impute those missing values.
+Notice that ~91.6% of the rows are missing from the BATTING_HBP field - we will just drop this column from consideration.  The columns BASERUN_CS (base run caught stealing) and BASERUN_SB (stolen bases) both have missing values.  According to baseball history, stolen bases weren't tracked officially until 1887, so some of the missing data could be from 1871-1886.  We will impute those values.  There are a high percentage of missing BATTING_SO (batter strike outs) and PITCHING_SO (pitching strike outs) which seem highly unlikely - we will also impute those missing values. We have chosen to impute missing values with the median value of the feature.
 
 ```{r echo=FALSE}
 # Drop the BATTING_HBP field
@@ -372,7 +372,7 @@ There were missing values found in BASERUN_CS (Caught Stolen Bases), FIELDING_DP
 
 ### Outliers
 
-There are unreasonable outliers found in PITCHING_SO (pitching strikeouts), PITCHIN_H (allowed hits per game), PITCHING_BB (walks), and  FIELDING_E (fielding errors) that exceed what is reasonable or possible given standard game length.  While specific games might have outliers (e.g. in a game with extra innings), we wouldn't expect the totals per season to allow for outliers in every game.  Given this, we will replace any outliers with the median for the data set. Limits we set included: > 4000 PITCHING_SO (25 strikeouts per game), > 5000 PITCHING_H (30 hits allowed per game), > 2000 PITCHING_BB (13 walks per game) and > 480 FIELDING_E (3 errors per game).
+There are unreasonable outliers found in PITCHING_SO (pitching strikeouts), PITCHING_H (allowed hits per game), PITCHING_BB (walks), and  FIELDING_E (fielding errors) that exceed what is reasonable or possible given standard game length.  While specific games might have outliers (e.g. in a game with extra innings), we wouldn't expect the totals per season to allow for outliers in every game.  Given this, we will replace any outliers with the median for the data set. Limits we set included: > 4000 PITCHING_SO (25 strikeouts per game), > 5000 PITCHING_H (30 hits allowed per game), > 2000 PITCHING_BB (13 walks per game) and > 480 FIELDING_E (3 errors per game).
 
 ### Transform non-normal variables
 
@@ -475,7 +475,7 @@ This is a trend we saw throughout the three models that we built, although Model
 
 ### Model 1  
 
-As mentioned above, below is our initial multiple linear regression model that includes all features from our cleaned dataset.
+Below is our initial multiple linear regression model that includes all features from our cleaned dataset.
 
 ```{r echo=FALSE}
 # Splitting the dataset into train/testing set with 80/20 split
@@ -493,7 +493,9 @@ residPlot(lm_s)
 ```
 
  
-We can explicitly call out our variable importance using the Caret package which will determine our feature importance for each of the multiple linear regression models individually.
+We can explicitly call out our variable importances using the Caret package which will determine our feature importance for each of the multiple linear regression models individually.
+
+We also examine the VIF of our variables to check for multicolinearity in the model.
 
 ```{r echo=FALSE}
 # Display Variable feature importance plot
@@ -585,7 +587,7 @@ From the previous section and residual diagnostics (both the residual histogram 
 
 Next looking at the F-statistic for all models were large and achieved a statistically significant p-value than than a default alpha of .05; thus for all three models the Null hypothesis that is rejected that 0s for our regression coefficients would fit the data better. 
 
-From the exploratory data analysis we saw that many of the predictor variables were correlated with each other--this makes sense given that baseball is a team sport, and thus different position scoring/runs helps contribute to wins. However this could be an issue from a multicolinearity, that can lead to unstable regression fits. From the previous section we used VIF (Variable Inflation Factor) to guage better models by preferring VIF values less than 5. 
+From the exploratory data analysis we saw that many of the predictor variables were correlated with each other--this makes sense given that baseball is a team sport, and thus different position scoring/runs helps contribute to wins. However this could be an issue from a multicolinearity, that can lead to unstable regression fits. From the previous section we used VIF (Variable Inflation Factor) to gauge better models by preferring VIF values less than 5. 
 
 
 ```{r}
@@ -610,7 +612,7 @@ SummaryTable %>%
 
 The following figure represents the performance of 3 of the models on both the testing and on the training dataset. for this multiple linear regression problem, the adjusted R2 value was used as the metric for performance on predicting the target wins.
 
-```{r}
+```{r, message = F}
 # Build prediction results dataset for plotting (each model with training and test data)
 results <- multi_lm %>%
   predict(df_train) %>% 
@@ -669,7 +671,7 @@ of 0.31 on the training set and 0.31 on the testing dataset.
 
 ### Model of choice  
 
-Based on these analyses, Model 2 and Model 3 both performed marginally better than Model 1 and could be selected as the linear model of choice when looking at adjusted R2. However, there is greater statistical significance under the third model relative to the others and uses less unnecessary variables to compute our prediction without sacrificing much in terms of adjusted R^2 value. Additionally, Model 3 seems to have lower VIF scores than Models 1 and 2. Because of these factors, as well as its better adjustment for multicollinearity (we noticeably saw less sign-flipping in coefficients) and thus model 3 would be the model of choice. 
+Based on these analyses, Model 2 and Model 3 both performed marginally better than Model 1 and could be selected as the linear model of choice when looking at adjusted R2. However, there is greater statistical significance under the third model relative to the others and uses less unnecessary variables to compute our prediction without sacrificing much in terms of adjusted R^2 value. Additionally, Model 3 seems to have lower VIF scores than Models 1 and 2. Because of these factors, as well as its better adjustment for multicollinearity (we noticeably saw less sign-flipping in coefficients), model 3 would be the model of choice. 
 
 
 ## References
