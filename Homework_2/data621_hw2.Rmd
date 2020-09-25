@@ -26,7 +26,12 @@ library (caret)
 library (e1071)
 ```
 
-## Download Dataset
+## Overview
+
+This assignment will present various classification metrics through creating functions in R that will carry out these calculations. These calculations will be will be compared against built-in functions from various R packages and a graphical representation of these results will be presented.
+
+
+## 1. Download Dataset
 
 ```{r, echo=TRUE}
 df <- read.csv ("https://raw.githubusercontent.com/djlofland/DS621_F2020_Group3/master/Homework_2/datasets/classification-output-data.csv", header=TRUE)
@@ -46,13 +51,13 @@ The dataset has three key columns we will use:
 summary(df) 
 ```
 
-## Raw Confusion Matrix
+## 2. Raw Confusion Matrix
 
 ```{r, echo=TRUE}
 (confusion_matrix <- table("Actual"= df$class, "Predicted"=df$scored.class))
 ```
 
-## Accuracy Function
+## 3. Accuracy Function
 
 The following function returns the accuracy of the predictions.
 
@@ -73,7 +78,7 @@ accuracy <- function(df){
 (Accuracy <- accuracy(df))
 ```
 
-## Error Function
+## 4. Error Function
 
 $$ Error = \frac{FP + FN}{TP + FP + TN + FN}$$
 
@@ -101,7 +106,7 @@ We can verify the sum of the accuracy and error rates is equal to one.
 Accuracy + Error 
 ```
 
-## Precision Function
+## 5. Precision Function
 
 $$ Precision = \frac{TP}{TP + FP }$$
 The following function returns the precision of the predictions.
@@ -121,7 +126,7 @@ precision <- function(df){
 precision(df)
 ```
 
-## Sensitivity Function
+## 6. Sensitivity Function
 
 $$ Sensitivity = \frac{TP}{TP + FN }$$
 The following function returns the sensitivity of the predictions.
@@ -141,7 +146,7 @@ sensitivity <- function(df){
 (sensitivity(df))
 ```
 
-## Specificity Function
+## 7. Specificity Function
 
 $$ Specificity = \frac{TN}{TN + FP}$$
 The following function returns the specificity of the predictions.
@@ -161,7 +166,7 @@ specificity <- function(df){
 (specificity(df))
 ```
 
-## F1 Score Function
+## 8. F1 Score Function
 
 $$ F1Score = \frac{2 *Precision *Sensitivity}{Precision + Sensitivity}$$
 
@@ -182,7 +187,7 @@ f1_score <- function(df){
 
 ```
 
-## F1 Score Bounds
+## 9. F1 Score Bounds
 
 ```{r, echo=TRUE}
 
@@ -199,7 +204,7 @@ f1_function <- function(precision, sensitivity){
 
 ```
 
-## ROC Curve
+## 10. ROC Curve
 ```{r, echo=TRUE}
 
 roc_plot <- function(df, probability) {
@@ -227,7 +232,8 @@ roc_plot <- function(df, probability) {
   
   ggplot <- ggplot(classification_data, aes(FPR, TPR))
   plot = ggplot + geom_line() + geom_abline(intercept = 0) + 
-    ggtitle("ROC Curve for Classification data")
+    ggtitle("ROC Curve for Classification data")+
+    theme_bw()
 
   height = (classification_data$TPR[-1]+
               classification_data$TPR[-length(classification_data$TPR)])/2
@@ -240,7 +246,7 @@ roc_plot <- function(df, probability) {
 roc_plot(df, "scored.probability")
 ```
 
-## Use All Functions
+## 11. Use All Functions
 
 ```{r, echo=TRUE}
 
@@ -258,7 +264,7 @@ AUC))
 classification_data
 ```
 
-## Compare to caret Functions
+## 12. Compare to caret Functions
 
 ```{r, echo=TRUE}
 cm <- confusionMatrix(data = as.factor(df$scored.class), 
@@ -271,7 +277,7 @@ Specificity == cm$byClass["Specificity"]
 Accuracy == cm$overall["Accuracy"]
 ```
 
-## pROC
+## 13. pROC
 
 ```{r, echo=TRUE}
 
