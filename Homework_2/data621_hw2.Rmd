@@ -57,6 +57,8 @@ summary(df)
 (confusion_matrix <- table("Actual"= df$class, "Predicted"=df$scored.class))
 ```
 
+Here is the raw confustion matrix with rows reflecting Actual and columns are Predicted. 
+
 ## 3. Accuracy Function
 
 The following function returns the accuracy of the predictions.
@@ -204,6 +206,8 @@ f1_function <- function(precision, sensitivity){
 
 ```
 
+The F1 score is bounded from 0 to 1. 
+
 ## 10. ROC Curve
 ```{r, echo=TRUE}
 
@@ -277,6 +281,8 @@ Specificity == cm$byClass["Specificity"]
 Accuracy == cm$overall["Accuracy"]
 ```
 
+Our homebrew R functions match with the caret() package functions. 
+
 ## 13. pROC
 
 ```{r, echo=TRUE}
@@ -288,3 +294,11 @@ plot(roc, main="ROC Curve for Classification data")
 roc$auc
 
 ```
+
+
+Our AUC was 0.8484 compared to pROC's 0.8503, which are within 0.2% of each other and thus converge--difference could be due to numerical integration under the curve. 
+
+## References
+
+1. Kuhn and Johnson. Applied Predictive Modeling.
+2. Web tutorials: http://www.saedsayad.com/model_evaluation_c.htm
