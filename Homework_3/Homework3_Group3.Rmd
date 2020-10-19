@@ -4,14 +4,14 @@ subtitle: 'Crime Logistic Regression'
 author: 'Zach Alexander, Sam Bellows, Donny Lofland, Joshua Registe, Neil Shah, Aaron Zalki'
 data: '09/26/2020'
 output:
-  pdf_document:
-    extra_dependencies: ["geometry", "multicol", "multirow", "xcolor"]
   html_document:
     theme: cerulean
     highlight: pygments
     css: ./lab.css
     toc: true
     toc_float: true
+  pdf_document:
+    extra_dependencies: ["geometry", "multicol", "multirow", "xcolor"]
 ---
 
 Source code: [https://github.com/djlofland/DS621_F2020_Group3/tree/master/Homework_3](https://github.com/djlofland/DS621_F2020_Group3/tree/master/Homework_3)
@@ -161,7 +161,6 @@ Your objective is to build a binary logistic regression model on the training da
 * rad: index of accessibility to radial highways (predictor variable)
 * tax: full-value property-tax rate per $10,000 (predictor variable)
 * ptratio: pupil-teacher ratio by town (predictor variable)
-* black: 1000(Bk - 0.63)2 where Bk is the proportion of blacks by town (predictor variable)
 * lstat: lower status of the population (percent) (predictor variable)
 * medv: median value of owner-occupied homes in $1000s (predictor variable)
 * target: whether the crime rate is above the median crime rate (1) or not (0) (response variable)
@@ -190,7 +189,7 @@ There are two files provided:
 * **crime-evaluation-data_modified.csv** - holdout data used to for evaluation.  Note this dataset doesn't include the target column so while we can predict classes, our model will have to be scored by an outside group with knowledge of the actual classes.
 
 ```{r load_data, echo=FALSE}
-# Load Moneyball baseball dataset
+# Load crime baseball dataset
 df <- read.csv('datasets/crime-training-data_modified.csv')
 df_eval <- read.csv('datasets/crime-evaluation-data_modified.csv')
 ```
@@ -217,7 +216,8 @@ The first observation is that we have no missing data (coded as NA's).
 We have two target values, 0 and 1.  When building models, we ideally want an equal representation of both classes.  As class imbalance deviates, our model performance will suffer both form effects of differential variance between the classes and bias towards picking the more represented class.  For logistic regression, if we see strong imbalance, we can 1) up-sample the smaller group, down-sample the larger group, or adjust or threshold for assigning the predicted value away from 0.5.
 
 ```{r}
-#[TODO - show class counts]
+class_proportion = colMeans(df['target'])
+class_proportion
 ```
 
 [TODO - any commentary on class (im)balance]
@@ -228,7 +228,7 @@ Next, we visualize the distribution profiles for each of the predictor variables
 
 ```{r, fig.height = 10, fig.width = 10, echo=FALSE}
 # Prepare data for ggplot
-gather_df <- df %>% 
+gather_df <- df %>% select(-target) %>%
   gather(key = 'variable', value = 'value')
 
 # Histogram plots of each variable
@@ -238,7 +238,7 @@ ggplot(gather_df) +
   facet_wrap(. ~variable, scales='free', ncol=3)
 ```
 
-The distribution profiles show the prevalence of kurtosis, specifically right skew in variables [TODO - insert right variable names] and left skew in [TODO - insert left skew variable names]. These deviations from a traditional normal distribution can be problematic for linear regression assumptions, and thus we might need to transform the data.  Several features appear to be binary [TODO - list and explain].  Furthermore [TODO - insert bimodel column names] appear bimodal. Bimodal features in a dataset are both problematic and interesting and potentially an area of opportunity and exploration.  Bimodal data suggests that there are possibly two different groups or classes within the feature.
+The distribution profiles show the prevalence of kurtosis, specifically right skew in variables dis, lstat, nox, rm, zn, and left skew in age and ptratio. These deviations from a traditional normal distribution can be problematic for linear regression assumptions, and thus we might need to transform the data.  The feature chas is binary, as it only assumes values of 0 or 1.  Furthermore, the features tax, rad, and possibly indus appear bimodal. Bimodal features in a dataset are both problematic and interesting and potentially an area of opportunity and exploration.  Bimodal data suggests that there are possibly two different groups or classes within the feature.
 
 Two possibilities immediately come to mind.  The bimodal nature could be caused by ...[TODO commentary]
 
@@ -276,7 +276,7 @@ In addition to creating histogram distributions, we also elected to use box-plot
 
 ```{r, fig.height = 10, fig.width = 10, echo=FALSE}
 # Prepare data for ggplot
-gather_df <- df %>% 
+gather_df <- df %>% select(-target) %>%
   gather(key = 'variable', value = 'value')
 
 # Boxplots for each variable
@@ -289,14 +289,14 @@ The box-plots reveal significant outliers that may need to be imputed if necessa
 
 ### Variable Plots
 
-Finally, we wanted to plot scatter plots of each variable versus the target variable, TARGET_WINS, to get an idea of the relationship between them. 
+Finally, we wanted to plot scatter plots of each variable versus the target variable, target, to get an idea of the relationship between them. 
 
 ```{r, fig.height = 10, fig.width = 10, echo=FALSE}
 # Plot scatter plots of each variable versus the target variable
 featurePlot(df[,1:ncol(df)-1], df[,ncol(df)], pch = 20)
 ```
 
-[TODO - insert commentary]
+Although it does not appear that any 1 feature clearly distinguishes the two target values, there are many features that appear to have some significant correlation with the target, including lstat, age, dis, zn, and nox. This indicates that our data may be predictive and the model building process is likely to model an actual relationship rather than just overfitting to the quirks of the training data.
 
 ### Missing Data
 
@@ -358,11 +358,11 @@ To summarize our data preparation and exploration, we can distinguish our findin
 
 ### Removed Fields
 
-[TODO insert commentary]  
+All the predictor variables have no missing values and show no indication of incomplete or incorrect data. As such, we have kept all the fields.
 
 ### Missing Values
 
-[TODO insert commentary]  
+The data had no missing values to remove.
 
 ### Outliers
 
