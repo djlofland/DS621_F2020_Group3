@@ -181,7 +181,7 @@ Your objective is to build a binary logistic regression model on the training da
 
 ### Dataset
 
-[TODO - Describe data set, # columns, target name, row count - anything special it's helpful to know before going into analysis]
+The dataset is notably different from assignment 1's Moneyball regression dataset in two ways: It contains both a categorical target, and provides some categorical features. The fact that we are provided with a categorical target turns the task from a regression task to a classification task, perfect for logistic regression. The data contains 12 features and 466 instances, with 40 instances reserved for an evaluation dataset with targets removed.
 
 There are two files provided:
 
@@ -209,7 +209,7 @@ summary(df)
 
 The first observation is that we have no missing data (coded as NA's).
 
-[TODO - Insert commentary based on initial summary stats]
+Based on the summary statistics, it appears we have some highly skewed features, as many features have means that are far from the median indicating a skewed distribution. Some examples include the variables zn and tax. We also see a categorical variable chas that appears to be quite imbalanced, as over 75% of values are 0.
 
 ### Check Class Bias
 
@@ -220,7 +220,7 @@ class_proportion = colMeans(df['target'])
 class_proportion
 ```
 
-[TODO - any commentary on class (im)balance]
+The classes are quite balanced, with approximately 51% 0's and 49% 1's. This is helpful, as with unbalanced class distributions it is often necessary to artificially balance the classes to achieve good results. No upsampling or downsampling will be required to achieve class balance with this dataset.
 
 ### Distributions
 
@@ -240,35 +240,33 @@ ggplot(gather_df) +
 
 The distribution profiles show the prevalence of kurtosis, specifically right skew in variables dis, lstat, nox, rm, zn, and left skew in age and ptratio. These deviations from a traditional normal distribution can be problematic for linear regression assumptions, and thus we might need to transform the data.  The feature chas is binary, as it only assumes values of 0 or 1.  Furthermore, the features tax, rad, and possibly indus appear bimodal. Bimodal features in a dataset are both problematic and interesting and potentially an area of opportunity and exploration.  Bimodal data suggests that there are possibly two different groups or classes within the feature.
 
-Two possibilities immediately come to mind.  The bimodal nature could be caused by ...[TODO commentary]
+Bimodal features are extremely interesting in classification tasks, as the could indicate overlapping but seperate distributions for each class, which could provide powerful predictive power in a model.
 
-While we don't tackle feature engineering in this analysis, if we were performing a more in-depth analysis, we could leverage the package, `mixtools` (see R Vignette).  This package helps regress *mixed models* where data can be subdivided into subgroups.  
-
-[TODO - maybe drop this section, not sure if needed]
+While we don't tackle feature engineering in this analysis, if we were performing a more in-depth analysis, we could leverage the package, `mixtools` (see R Vignette).  This package helps regress *mixed models* where data can be subdivided into subgroups. 
 
 Here is a quick example showing a possible mix within `indis`:
 
 ```{r, echo=FALSE}
 # Select indus column and remove any missing data
-#df_mix <- df %>% 
-#  dplyr::select(indus)
-#
+df_mix <- df %>% 
+  dplyr::select(indus)
+
 # Calculate mixed distributions for indus
-#indus_so_mix <- normalmixEM(df_mix$indus, 
-#                            lambda = .5, 
-#                            mu = c(400, 1200), 
-#                            sigma = 5, 
-#                            maxit=60)
+indus_so_mix <- normalmixEM(df_mix$indus, 
+                            lambda = .5, 
+                            mu = c(5, 20), 
+                            sigma = 1, 
+                            maxit=60)
 
 # Simple plot to illustrate possible bimodal mix of groups
-#plot(indus_so_mix, 
-#     whichplots = 2,
-#     density = TRUE, 
-#     main2 = "`indus` Possible Distributions", 
-#     xlab2 = "indus")
+plot(indus_so_mix, 
+     whichplots = 2,
+     density = TRUE, 
+     main2 = "`indus` Possible Distributions", 
+     xlab2 = "indus")
 ```
 
-Lastly, several features have both a distribution along with a high number of values at an extreme.  We should first vet whether those are reasonable values and if so, possible create a new feature separating out those values and only transform the existing non-extreme values [TODO - this needs way better explanation and only include if we end up doing this]
+Lastly, several features have both a distribution along with a high number of values at an extreme. However, based on the feature meanings and provided information, there is no reason to believe that any of these extreme values are mistakes, data errors, or otherwise inexplicable. As such, we will not remove the extreme values, as they represent valuable data and could be predictive of the target.
 
 ### Boxplots
 
@@ -311,19 +309,11 @@ stack(sort(missing_pct, decreasing = TRUE))
 
 ### Handle Outliers
 
-```{r echo=FALSE}
-# For continuous features, we can use mean or median to impute and replace outliers; however, with categorical features, a KNN strategy may be more appropriate where we replace unusual values with values from other similar properties.
-
-no_outlier_df <- df
-
-# [TODO - Handle continuous variables]
-
-
-# [TODO - handle categorical variables]
-
-# note: clean_df is post-outlier cleanup
-clean_df <- no_outlier_df
+```{r echo=F}
+clean_df <- df
 ```
+
+As mentioned above, for this task we chose not to remove outliers as there was no reason to believe that any of the values were in error.
 
 ### Feature-Target Correlations
 
@@ -331,10 +321,12 @@ With our outliers data imputed correctly, we can now build plots to quantify the
 
 ```{r echo=FALSE}
 # Show feature correlations/target by decreasing correlation
-stack(sort(cor(clean_df[,1], clean_df[,2:ncol(clean_df)])[,], decreasing=TRUE))
+stack(sort(cor(df[,13], df[,1:ncol(df)-1])[,], decreasing=TRUE))
 ```
 
-[TODO - insert variable names] have the highest correlation (positive) with target; this makes sense given that more [TODO] means more [TODO] The other variables have weak or slightly negative correlation, which implies they have less predictive power.
+nox, age, rad, tax, and indus have the highest correlation (positive) with target; this appears to be somewhat counterintuitive, as older buildings, more residential neighborhoods, and higher property tax values appear to lead to higher crime, not what was expected. The strong positive correlation with nitrous oxide is also interesting and unexpected. The other variables have weak or slightly negative correlation, which implies they have less predictive power.
+
+dis, zn, and medv all have a negative correlation to the target, indicating that more distant areas with large lot sizes and high median home values are less likely to be high crime, all of which seems sensible.
 
 ### Multicolinearity
 
@@ -348,9 +340,9 @@ corrplot(correlation, 'ellipse', type = 'lower', order = 'hclust',
          col=brewer.pal(n=8, name="RdYlBu"))
 ```
 
-We can see that some variables are highly correlated with one another, such as [TODO - insert variable names]. When we start considering features for our models, we'll need to account for the correlations between features and avoid including pairs with strong correlations.
+We can see that some variables are highly correlated with one another, such as tax and rad, with a correlation between .75 and 1. When we start considering features for our models, we'll need to account for the correlations between features and avoid including pairs with strong correlations.
 
-As a note, this dataset is challenging as many of the predictive features go hand-in-hand with other feature and multicolinearity will be a problem.  [TODO why?] 
+As a note, this dataset is challenging as many of the predictive features go hand-in-hand with other feature and multicolinearity will be a problem. Home size, price, age, and distance from employment centers could all potentially be related, so it makes sense to see some collinearity in the features.
 
 ## 2. Data Preparation
 
@@ -366,7 +358,7 @@ The data had no missing values to remove.
 
 ### Outliers
 
-[TODO insert commentary]  
+No outliers were removed as all values seemed reasonable. 
 
 ### Transform non-normal variables
 
@@ -378,15 +370,32 @@ Finally, as mentioned earlier in our data exploration, and our findings from our
 df_temp <- data.frame(matrix(ncol = 1, nrow = length(clean_df$target)))
 
 # performed boxcox transformation after identifying proper lambda
-# df_temp$BATTING_3B <- clean_df$BATTING_3B
-# batting3b_lambda <- BoxCox.lambda(clean_df$BATTING_3B)
-# df_temp$BATTING_3B_transform <- log(clean_df$BATTING_3B)
+df_temp$rm <- clean_df$rm
+rm_lambda <- BoxCox.lambda(clean_df$rm)
+df_temp$rm_transform <- BoxCox(clean_df$rm, rm_lambda)
 
-# [TODO - do other columns]
+df_temp$nox <- clean_df$nox
+nox_lambda <- BoxCox.lambda(clean_df$nox)
+df_temp$nox_transform <- BoxCox(clean_df$nox, nox_lambda)
 
-#df_temp <- df_temp[, 2:13]
+df_temp$dis <- clean_df$dis
+df_temp$dis_transform <- log(clean_df$dis)
 
-#histbox(df_temp, c(6, 2))
+df_temp$zn <- clean_df$zn
+df_temp$zn_transform <- log(clean_df$zn+1)
+
+df_temp$lstat <- clean_df$lstat
+df_temp$lstat_transform <- log(clean_df$lstat)
+
+df_temp$age <- clean_df$age
+df_temp$age_transform <- log(max(clean_df$age) + 1 - clean_df$age)
+
+df_temp$ptratio <- clean_df$ptratio
+df_temp$ptratio_transform <- log(max(clean_df$ptratio) + 1 - clean_df$ptratio)
+
+df_temp <- df_temp[, 2:15]
+
+histbox(df_temp, c(6, 2))
 ```
 
 ### Finalizing the dataset for model building 
@@ -397,13 +406,14 @@ With our transformations complete, we can now add these into our `clean_df` data
 # Build clean dataframe with transformation
 
 # [TODO - update all this code]
-clean_df <- data.frame(cbind(clean_df 
-#                        BATTING_3B_transform = df_temp$BATTING_3B_transform,
-#                        BATTING_HR_transform = df_temp$BATTING_HR_transform,
-#                        BASERUN_SB_transform = df_temp$BASERUN_SB_transform,
-#                        PITCHING_BB_transform = df_temp$PITCHING_BB_transform,
-#                        PITCHING_SO_transform = df_temp$PITCHING_SO_transform,
-#                        FIELDING_E_transform = df_temp$FIELDING_E_transform
+clean_df <- data.frame(cbind(clean_df, 
+                        rm_transform = df_temp$rm_transform,
+                        nox_transform = df_temp$nox_transform,
+                        dis_transform = df_temp$dis_transform,
+                        zn_transform = df_temp$zn_transform,
+                        lstat_transform = df_temp$lstat_transform,
+                        age_transform = df_temp$age_transform,
+                        ptratio_transform = df_temp$ptratio_transform
                         ))
 
 is.na(clean_df) <- sapply(clean_df, is.infinite)
