@@ -4,7 +4,7 @@ subtitle: 'Crime Logistic Regression'
 author: 'Zach Alexander, Sam Bellows, Donny Lofland, Joshua Registe, Neil Shah, Aaron Zalki'
 data: '09/26/2020'
 output:
-  html_document:
+  html_document:  
     theme: cerulean
     highlight: pygments
     css: ./lab.css
@@ -173,7 +173,8 @@ Your objective is to build a binary logistic regression model on the training da
 
 ## Introduction
 
-[TODO - Insert overview test describing the data and how we will generally approach the problem]
+Crime is a common concern in large cities, and denizens, policy makers and law enforcement are interested in identifying locations where crime can or might occur. In this assignment we are given a dataset for the city of Boston, and will build a model to identify regions that might have higher or lower (against the median) crime. Since the goal is a binary (above or below median) response, this assignment will employ binary logistic regression--and will not be predicting an actual value, like the moneyball assignment. 
+
 
 ## 1. Data Exploration
 
@@ -669,8 +670,8 @@ Based on these analyses, Model 2 and Model 3 both performed marginally better th
 
 ### A. Crime Dataset Columns
 
-* 
-
+- [Group 3 HW  3 GitHub](https://github.com/djlofland/DS621_F2020_Group3/tree/master/Homework_3)
+  
 ### R Code
 
 ```
