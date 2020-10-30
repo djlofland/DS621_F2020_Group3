@@ -366,7 +366,7 @@ No outliers were removed as all values seemed reasonable.
 
 Finally, as mentioned earlier in our data exploration, and our findings from our histogram plots, we can see that some of our variables are highly skewed. To address this, we decided to perform some transformations to make them more normally distributed. Here are some plots to demonstrate the changes in distributions before and after the transformations:  
 
-```{r echo=FALSE, fig.height=12, fig.width=10, message=FALSE, warning=FALSE}
+```{r, echo=FALSE, fig.height=12, fig.width=10, message=FALSE, warning=FALSE}
 
 # created empty data frame to store transformed variables
 df_temp <- data.frame(matrix(ncol = 1, nrow = length(clean_df$target)))
@@ -530,8 +530,8 @@ This is a trend we saw throughout the four models that we built, although Models
 *For the binary logistic regression model, will you use a metric such as log likelihood, AIC, ROC curve, etc.? Using the training data set, evaluate the binary logistic regression model based on (a) accuracy, (b) classification error rate, (c) precision, (d) sensitivity, (e) specificity, (f) F1 score, (g) AUC, and (h) confusion matrix. Make predictions using the evaluation data set.*
 
 
-
-```{r}
+Model #1 Confusion Matrix
+```{r, echo=FALSE}
 model1_glm_pred = ifelse(predict(model1, type = "link") > 0.5, "Yes", "No")
 
 cleaneddftesting$model1 <- ifelse(predict.glm(model1, cleaneddftesting, "response") >= 0.5, 1, 0)
@@ -543,7 +543,7 @@ results <- tibble(Model = "Model #1", Accuracy=cm1$byClass[11], F1 = cm1$byClass
 cm1
 ```
 
-
+Model #2 Confusion Matrix
 ```{r}
 model2_glm_pred = ifelse(predict(model2, type = "link") > 0.5, "Yes", "No")
 
@@ -556,7 +556,7 @@ results <- rbind(results, tibble(Model = "Model #2", Accuracy=cm2$byClass[11], F
 cm2
 ```
 
-
+Model #3 Confusion Matrix
 ```{r}
 model3_glm_pred = ifelse(predict(model3, type = "link") > 0.5, "Yes", "No")
 
@@ -568,7 +568,7 @@ results <- rbind(results, tibble(Model = "Model #3", Accuracy=cm3$byClass[11], F
                   AIC=model3$aic))
 cm3
 ```
-
+Model #4 Confusion Matrix
 ```{r}
 model4_glm_pred = ifelse(predict(model4, type = "link") > 0.5, "Yes", "No")
 
@@ -580,7 +580,11 @@ results <- rbind(results, tibble(Model = "Model #4", Accuracy=cm4$byClass[11], F
                   AIC=model4$aic))
 cm4
 ```
-```{r, message=False, warning=False}
+
+
+A Comparison of ROC Curves
+
+```{r, message=FALSE, warning=FALSE}
 # par(pty = "s")
 roc(cleaneddftesting[["target"]], cleaneddftesting[["model1"]], plot = TRUE, legacy.axes = TRUE, print.auc = TRUE)
 roc(cleaneddftesting[["target"]], cleaneddftesting[["model2"]], plot = TRUE, legacy.axes = TRUE, print.auc = TRUE)
@@ -600,8 +604,7 @@ kable(results) %>%
 
 The analysis shows the following results:
 
-Model 1 - This model is based on the all predictors on an un-transformed dataset. Results for this model provided an R^2 of about 
-of 0.31 on the training set and 0.3 on the testing dataset. 
+Model 1 - This model is based on the all non-transformed variables. Results for this model provided an F1 value of 0.94, but . 
 
 Model 2 - This model is based on a subset of significant predictors on an un-transformed dataset. Results for this model provided an R^2 of about 
 of 0.31 on the training set and 0.31 on the testing dataset. 
@@ -661,7 +664,7 @@ is.na(df_eval) <- sapply(df_eval, is.infinite)
 ```
 
 
-### TODO -- Model of choice  
+## TODO -- Model of choice  
 
 Based on these analyses, Model 2 and Model 3 both performed marginally better than Model 1 and could be selected as the linear model of choice when looking at adjusted R2. However, there is greater statistical significance under the third model relative to the others and uses less unnecessary variables to compute our prediction without sacrificing much in terms of adjusted R^2 value. Additionally, Model 3 seems to have lower VIF scores than Models 1 and 2. Because of these factors, as well as its better adjustment for multicollinearity (we noticeably saw less sign-flipping in coefficients), model 3 would be the model of choice. 
 
