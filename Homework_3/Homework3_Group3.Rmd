@@ -48,6 +48,7 @@ library(mixtools)
 library(tidymodels)
 library(ggpmisc)
 library(regclass)
+library(pROC)
 
 #' Print a side-by-side Histogram and QQPlot of Residuals
 #'
@@ -197,7 +198,7 @@ df_eval <- read.csv('datasets/crime-evaluation-data_modified.csv')
 
 Below, we created a chart that describes each variable in the dataset and the theoretical effect it will have on the crime rate.
 
-[TODO - put image here]
+![Variables of Interest](./images/theoretical_effects.jpg)
 
 ### Summary Stats
 
@@ -210,11 +211,11 @@ summary(df)
 
 The first observation is that we have no missing data (coded as NA's).
 
-Based on the summary statistics, it appears we have some highly skewed features, as many features have means that are far from the median indicating a skewed distribution. Some examples include the variables zn and tax. We also see a categorical variable chas that appears to be quite imbalanced, as over 75% of values are 0.
+Based on the summary statistics, it appears we have some highly skewed features, as many features have means that are far from the median indicating a skewed distribution. Some examples include the variables `zn` and `tax`. We also see a categorical variable `chas` that appears to be quite imbalanced, as over 75% of values are 0.
 
 ### Check Class Bias
 
-We have two target values, 0 and 1.  When building models, we ideally want an equal representation of both classes.  As class imbalance deviates, our model performance will suffer both form effects of differential variance between the classes and bias towards picking the more represented class.  For logistic regression, if we see strong imbalance, we can 1) up-sample the smaller group, down-sample the larger group, or adjust or threshold for assigning the predicted value away from 0.5.
+We have two target values, 0 and 1.  When building models, we ideally want an equal representation of both classes.  As class imbalance deviates, our model performance will suffer both form effects of differential variance between the classes and bias towards picking the more represented class.  For logistic regression, if we see strong imbalance, we can 1) up-sample the smaller group, down-sample the larger group, or adjust our threshold for assigning the predicted value away from 0.5.
 
 ```{r}
 class_proportion = colMeans(df['target'])
@@ -239,7 +240,7 @@ ggplot(gather_df) +
   facet_wrap(. ~variable, scales='free', ncol=3)
 ```
 
-The distribution profiles show the prevalence of kurtosis, specifically right skew in variables dis, lstat, nox, rm, zn, and left skew in age and ptratio. These deviations from a traditional normal distribution can be problematic for linear regression assumptions, and thus we might need to transform the data.  The feature chas is binary, as it only assumes values of 0 or 1.  Furthermore, the features tax, rad, and possibly indus appear bimodal. Bimodal features in a dataset are both problematic and interesting and potentially an area of opportunity and exploration.  Bimodal data suggests that there are possibly two different groups or classes within the feature.
+The distribution profiles show the prevalence of kurtosis, specifically right skew in variables `dis`, `lstat`, `nox`, `rm`, `zn`, and left skew in `age` and `ptratio`. These deviations from a traditional normal distribution can be problematic for linear regression assumptions, and thus we might need to transform the data.  The feature `chas` is binary, as it only assumes values of 0 or 1.  Furthermore, the features `tax`, `rad`, and possibly `indus` appear bimodal. Bimodal features in a dataset are both problematic and interesting and potentially an area of opportunity and exploration.  Bimodal data suggests that there are possibly two different groups or classes within the feature.
 
 Bimodal features are extremely interesting in classification tasks, as the could indicate overlapping but seperate distributions for each class, which could provide powerful predictive power in a model.
 
@@ -288,14 +289,14 @@ The box-plots reveal significant outliers that may need to be imputed if necessa
 
 ### Variable Plots
 
-Finally, we wanted to plot scatter plots of each variable versus the target variable, target, to get an idea of the relationship between them. 
+Finally, we wanted to plot scatter plots of each variable versus the target variable to get an idea of the relationship between them. 
 
 ```{r, fig.height = 10, fig.width = 10, echo=FALSE}
 # Plot scatter plots of each variable versus the target variable
 featurePlot(df[,1:ncol(df)-1], df[,ncol(df)], pch = 20)
 ```
 
-Although it does not appear that any 1 feature clearly distinguishes the two target values, there are many features that appear to have some significant correlation with the target, including lstat, age, dis, zn, and nox. This indicates that our data may be predictive and the model building process is likely to model an actual relationship rather than just overfitting to the quirks of the training data.
+Although it does not appear that any 1 feature clearly distinguishes the two target values, there are many features that appear to have some significant correlation with the target, including `lstat`, `age`, `dis`, `zn`, and `nox`. This indicates that our data may be predictive and the model building process is likely to model an actual relationship rather than just overfitting to the quirks of the training data.
 
 ### Missing Data
 
@@ -325,9 +326,9 @@ With our outliers data imputed correctly, we can now build plots to quantify the
 stack(sort(cor(df[,13], df[,1:ncol(df)-1])[,], decreasing=TRUE))
 ```
 
-nox, age, rad, tax, and indus have the highest correlation (positive) with target; this appears to be somewhat counterintuitive, as older buildings, more residential neighborhoods, and higher property tax values appear to lead to higher crime, not what was expected. The strong positive correlation with nitrous oxide is also interesting and unexpected. The other variables have weak or slightly negative correlation, which implies they have less predictive power.
+It appears that `nox`, `age`, `rad`, `tax`, and `indus` have the highest correlation (positive) with `target`; this appears to be somewhat counterintuitive, as older buildings, more residential neighborhoods, and higher property tax values appear to lead to higher crime, not what was expected. The strong positive correlation with nitrous oxide is also interesting and unexpected. The other variables have weak or slightly negative correlation, which implies they have less predictive power.
 
-dis, zn, and medv all have a negative correlation to the target, indicating that more distant areas with large lot sizes and high median home values are less likely to be high crime, all of which seems sensible.
+`dis`, `zn`, and `medv` all have a negative correlation to `target`, indicating that more distant areas with large lot sizes and high median home values are less likely to be high crime, all of which seems sensible.
 
 ### Multicolinearity
 
@@ -341,9 +342,9 @@ corrplot(correlation, 'ellipse', type = 'lower', order = 'hclust',
          col=brewer.pal(n=8, name="RdYlBu"))
 ```
 
-We can see that some variables are highly correlated with one another, such as tax and rad, with a correlation between .75 and 1. When we start considering features for our models, we'll need to account for the correlations between features and avoid including pairs with strong correlations.
+We can see that some variables are highly correlated with one another, such as `tax` and `rad`, with a correlation between .75 and 1. When we start considering features for our models, we'll need to account for the correlations between features and avoid including pairs with strong correlations.
 
-As a note, this dataset is challenging as many of the predictive features go hand-in-hand with other feature and multicolinearity will be a problem. Home size, price, age, and distance from employment centers could all potentially be related, so it makes sense to see some collinearity in the features.
+As a note, this dataset is challenging as many of the predictive features go hand-in-hand with other features and multicolinearity will be a problem. Home size, price, age, and distance from employment centers could all potentially be related, so it makes sense to see some collinearity in the features.
 
 ## 2. Data Preparation
 
@@ -418,15 +419,6 @@ clean_df <- data.frame(cbind(clean_df,
                         ))
 
 is.na(clean_df) <- sapply(clean_df, is.infinite)
-
-# Impute missing value with the mean
-#mean = mean(clean_df$BATTING_3B_transform, na.rm = TRUE)
-#mean2 = mean(clean_df$BASERUN_SB_transform, na.rm = TRUE)
-#mean3 = mean(clean_df$PITCHING_SO_transform, na.rm = TRUE)
-
-# clean_df$BATTING_3B_transform[is.na(clean_df$BATTING_3B_transform)] <- mean
-# clean_df$BASERUN_SB_transform[is.na(clean_df$BASERUN_SB_transform)] <- mean2
-# clean_df$PITCHING_SO_transform[is.na(clean_df$PITCHING_SO_transform)] <- mean3
 ```
 
 
@@ -439,8 +431,6 @@ is.na(clean_df) <- sapply(clean_df, is.infinite)
 
 ### Model-building methodology  
 
-# TODO: Add ROC curves/compare to testing
-
 With a solid understanding of our dataset at this point, and with our data cleaned, we can now start to build out some of our binary logistic regression models.  
 
 First, we decided to split our cleaned dataset into a training and testing set (80% training, 20% testing). This was necessary as the provided holdout evaluation dataset doesn't provide target values so we cannot measure our model performance against that dataset.  
@@ -449,11 +439,11 @@ First we decided to split our datasets (both original and transformed) into test
 
 ```{r}
 
-origdfTrain <- createDataPartition(df$target, p=0.8, list=FALSE)
-origdftraining <- df[origdfTrain,]
-origdftesting <- df[-origdfTrain,]
+# origdfTrain <- createDataPartition(df$target, p=0.8, list=FALSE)
+# origdftraining <- df[origdfTrain,]
+# origdftesting <- df[-origdfTrain,]
 
-
+# utilizing one dataset for all four models
 cleaneddfTrain <- createDataPartition(clean_df$target, p=0.8, list=FALSE)
 cleaneddftraining <- clean_df[cleaneddfTrain,]
 cleaneddftesting <- clean_df[-cleaneddfTrain,]
@@ -466,230 +456,147 @@ set.seed(123456)
 Using our training dataset, we decided to run a binary logistic regression model (Model #1) that included all non-transformed features that we hadn't removed following our data cleaning process mentioned above. 
 
 ```{r}
-model1 <- glm(target ~., data = origtraining , family = binomial)
+model1 <- glm(target ~ zn + indus + chas + nox + rm + age + dis + rad + tax + ptratio + lstat + medv, data = cleaneddftraining , family = binomial)
 summary(model1)
 ```
-
-
-Model 2 was built using the transformed data set. 
-
+We also calculated VIF scores to measure effects of collinearity:
 ```{r}
-model2 <- glm(target ~., data = cleaneddftraining , family = binomial)
-summary(model2)
+# print variable inflation factor score
+print('VIF scores of predictors')
+
+VIF(model1)
 ```
 
-Our next model we used a Stepwise AIC on model 1 (the original dataset) to pick which features were most relevant.
+
+Model 2 was built using our transformed features. 
+
+```{r}
+model2 <- glm(target ~ zn_transform + indus + chas + nox_transform + rm_transform + age_transform + dis_transform + rad + tax + ptratio_transform + lstat_transform + medv, data = cleaneddftraining , family = binomial)
+summary(model2)
+```
+We also calculated VIF scores to measure effects of collinearity:
+```{r}
+# print variable inflation factor score
+print('VIF scores of predictors')
+
+VIF(model2)
+```
+Our next model we used a Stepwise AIC on model 1 (our model with non-transformed features) to pick which features were most relevant.
 
 ```{r}
 model3 <- model1 %>% stepAIC(trace = FALSE)
 summary(model3)
 ```
-In our final model we used a Stepwise AIC on model 2 (the transformed dataset) to pick which features were most relevant.
+
+We also calculated VIF scores to measure effects of collinearity:
+```{r}
+# print variable inflation factor score
+print('VIF scores of predictors')
+
+VIF(model3)
+```
+
+In our final model we used a Stepwise AIC on model 2 (our model with transformed features) to pick which features were most relevant.
 
 ```{r}
 model4 <- model2 %>% stepAIC(trace = FALSE)
 summary(model4)
 ```
+We also calculated VIF scores to measure effects of collinearity:
+```{r}
+# print variable inflation factor score
+print('VIF scores of predictors')
+
+VIF(model4)
+```
+
 
 ### Examining our model coefficients  
 
 Throughout our model-building process, we noticed that many of our model outputs yielded a few coefficient values that seemed to contradict our initial estimates. For instance, in Model #1:  
 
-**Negative values for coefficients that we'd expect to be positive**
-
-+ [TODO - add examples if present]  
-
 **Positive values for coefficients that we'd expect to be negative**  
 
-+ [TODO - add examples if present]  
-
-This is a trend we saw throughout the three models that we built, although Model #3 was able to adjust for this better than our first two models -- we can likely attribute this phenomenon to multicolinearity. Since we noticed in our initial data exploration that many variables in the dataset were highly correlated with one another (i.e. [TODO - give examples]), this phenomenon likely is increasing the variance of the coefficient estimates, making them difficult to interpret (and in some cases such as the features listed above, they are switching the signs). This was also supported by our Variance Inflation Factor (VIF) tests, which showed high values for features such as [TODO - insert examples]. In our final model (Model #3), we made sure to keep this in mind in order to get a better handle on our coefficients and reduce multicolinearity -- mainly, we removed certain variables that had high VIF scores through our stepwise selection process. Later in our discussion, we'll discuss whether or not we'd keep our final model based on this issue.  
-
-### Model 1  
-
-Below is our initial multiple linear regression model that includes all features from our cleaned dataset.
-
-```{r echo=FALSE}
-# Splitting the dataset into train/testing set with 80/20 split
-set.seed(3)
-df_split <- initial_split(clean_df, prop = 0.8)
-df_train <- training(df_split)
-df_test <- testing(df_split)
-
-# Model 1 - Include all features and leverage stepAIC to help identify ideal features
-
-# [TODO - add column names]
-multi_lm <- glm(target ~ ., data=df_train)
-(lm_s <- summary(multi_lm))
-confint(multi_lm)
-#residPlot(lm_s)
-```
-
-We can explicitly call out our variable importance using the `caret` package which will determine our feature importance for each of the binary logistic regression models individually.
-
-We also examine the VIF of our variables to check for multicolinearity in the model.
-
-```{r echo=FALSE}
-# Display Variable feature importance plot
-variableImportancePlot(multi_lm, "Model 1 LM Variable Importance")
-
-# print variable inflation factor score
-print('VIF scores of predictors')
-
-VIF(multi_lm)
-```
-
-### Model 2  
-
-In our second model, below, we decided to use stepwise selection in order to help us determine the optimal set of features from our original, cleaned dataset.
-
-```{r echo=FALSE}
-# Build model 2 - this is Model 1 with only significant features (using stepAIC)
-mult_lm_final <- stepAIC(multi_lm, direction = "both",
-                         scope = list(upper = multi_lm, lower = ~ 1),
-                         scale = 0, trace = FALSE)
-# Display Model 2 Summary
-(lmf_s <- summary(mult_lm_final))
-
-# Display Model 2 REsidual plots
-#residPlot(lmf_s)
-```
++ age - logically we thought that the higher the proportion of owner-occupied units built prior to 1940 would lead to a lower crime rate (historic homes with more property value)
++ dis - logically we thought that the higher the weighted mean value of distance to five Boston employment centers, the lower the crime rate (areas farther from employment centers indicated there is less of a need for them -- higher rates of employment) 
++ medv - logically we thought the higher the median value of owner-occupied homes in $1000s would lead to a lower crime rate
 
 
+This is a trend we saw throughout the four models that we built, although Models #3 and #4 were able to adjust for this better than our first two models -- we can likely attribute this phenomenon to multicolinearity. Since we noticed in our initial data exploration that many variables in the dataset were highly correlated with one another (i.e. `medv` and `zn`, `nox` and `indus`, `tax` and `rad`), this phenomenon likely is increasing the variance of the coefficient estimates, making them difficult to interpret (and in some cases such as the features listed above, they are switching the signs). This was also supported by our Variance Inflation Factor (VIF) tests, which showed high values for features such as [`medv` and `rn`]. In our final models (Models #3 and #4), we made sure to keep this in mind in order to get a better handle on our coefficients and reduce multicolinearity -- mainly, we removed certain variables that had high VIF scores through our stepwise selection process. 
 
-```{r echo=FALSE}
-# Display Variable feature importance plot
-variableImportancePlot(mult_lm_final, "Model 2 LM Variable Importance")
-
-# print variable inflation factor score
-print('VIF scores of predictors')
-
-VIF(mult_lm_final)
-```
-
-### Model 3
-
-In our third model, we decided to utilize some of our transformed variables to compare against our initial model. Additionally, similar to model 2, we used step-wise selection to determine feature importance and select the simplest model possible.
-
-```{r echo=FALSE}
-
-# Model 3 - Build linear model
-# [TODO - add column names]
-multi_lm_2 <- glm(target ~ ., data=df_train)
-
-# Model 3 - Show model summary info
-(lm_s_2 <- summary(multi_lm_2))
-
-# Model 3 - Show Confidence and Residual Plots
-confint(multi_lm_2)
-#residPlot(lm_s_2)
-
-# Model 3 - use stepAIC to select significant features
-mult_lm_final_2 <- stepAIC(multi_lm_2, direction = "both",
-                         scope = list(upper = multi_lm_2, lower = ~ 1),
-                         scale = 0, trace = FALSE)
-
-# Model 3 - Show summary of revised model with only significant features included
-(lmf_s_2 <- summary(mult_lm_final_2))
-
-# model 3 - Show residual plots
-#residPlot(lmf_s_2)
-```
-
-We can assess variable importance of our model with our original dataset (Model 2) to our transformed dataset (Model 3) as shown below. We notice that [TODO - add feature names] are much closer together in terms of weight in predicting target_wins than in Model 1 (pre-transformed)
-
-```{r echo=FALSE}
-# Model 3 - Show feature importance in final model after stepAIC
-variableImportancePlot(mult_lm_final_2, "Model 3 LM Variable Importance")
-
-# Model 3 - show Variance Inflation Factor score
-print('VIF scores of predictors')
-
-VIF(mult_lm_final_2)
-```
 
 ## 4. Model Selection & Analysis 
 
 *For the binary logistic regression model, will you use a metric such as log likelihood, AIC, ROC curve, etc.? Using the training data set, evaluate the binary logistic regression model based on (a) accuracy, (b) classification error rate, (c) precision, (d) sensitivity, (e) specificity, (f) F1 score, (g) AUC, and (h) confusion matrix. Make predictions using the evaluation data set.*
 
-The following table discusses each of the model performance metrics on the training dataset. These values indicate there is a minor improvement in model performance after applying transformations and selecting for significant parameters.  
-
-All models achieved a positive adjusted R^2 pointing to a weakly-positive relationship between the target variable TOTAL_WINs and the model predictor variables. 
-
-From the previous section and residual diagnostics (both the residual histogram and QQ plot)--all three models have normally distributed residuals with mean 0. There appears to be no heteroskedasticity (non-constant variance) or serial-correlation within the residuals--thus strictly from a linear regression perspective, none of the assumptions are violated and thus we can make inferential predictions based on our model. 
-
-Next looking at the F-statistic for all models were large and achieved a statistically significant p-value than than a default alpha of .05; thus for all three models the Null hypothesis that is rejected that 0s for our regression coefficients would fit the data better. 
-
-From the exploratory data analysis we saw that many of the predictor variables were correlated with each other--this makes sense given that baseball is a team sport, and thus different position scoring/runs helps contribute to wins. However this could be an issue from a multicolinearity, that can lead to unstable regression fits. From the previous section we used VIF (Variable Inflation Factor) to gauge better models by preferring VIF values less than 5. 
 
 
 ```{r}
+model1_glm_pred = ifelse(predict(model1, type = "link") > 0.5, "Yes", "No")
 
-# Build summary table with each model performance metrics
-SummaryTable <- bind_rows(
-  model_performance_extraction(lm_s),
-  model_performance_extraction(lmf_s),
-  model_performance_extraction(lmf_s_2)
-) 
-
-# Add row names
-#rownames(SummaryTable) <- c("Model 1", "Model 2", "Model 3")
-
-# Display nice format table
-SummaryTable %>% 
-  kable() %>% 
-  kable_styling(
-    bootstrap_options = c("hover", "condensed", "responsive"),
-    full_width = F)
+cleaneddftesting$model1 <- ifelse(predict.glm(model1, cleaneddftesting, "response") >= 0.5, 1, 0)
+cm1 <- confusionMatrix(factor(cleaneddftesting$model1), factor(cleaneddftesting$target), "1")
+results <- tibble(Model = "Model #1", Accuracy=cm1$byClass[11], F1 = cm1$byClass[7],
+                  Deviance= model1$deviance, 
+                  R2 = 1 - model1$deviance / model1$null.deviance,
+                  AIC= model1$aic)
+cm1
 ```
 
-The following figure represents the performance of 3 of the models on both the testing and on the training dataset. for this multiple linear regression problem, the adjusted R2 value was used as the metric for performance on predicting the target wins.
 
-```{r, message = F}
-# Build prediction results dataset for plotting (each model with training and test data)
-results <- multi_lm %>%
-  predict(df_train) %>% 
-  as.data.frame() %>% 
-  mutate(Predicted = df_train$TARGET_WINS, model = "Model 1") %>% 
-  bind_rows(mult_lm_final %>% 
-              predict(df_train) %>% 
-              as.data.frame() %>% 
-              mutate(Predicted = df_train$TARGET_WINS, model = "Model 2"),
-            mult_lm_final_2 %>% 
-              predict(df_train) %>% 
-              as.data.frame() %>% 
-              mutate(Predicted = df_train$TARGET_WINS, model = "Model 3")) %>% 
-  rename("Observed" = ".") %>% 
-  mutate(dataset = "Training Set") %>% 
-  bind_rows(
-    results_test <- multi_lm %>%
-      predict(df_test) %>% 
-      as.data.frame() %>%
-      mutate(Predicted = df_test$TARGET_WINS, model = "Model 1") %>% 
-      bind_rows(mult_lm_final %>% 
-                  predict(df_test) %>% 
-                  as.data.frame() %>% 
-                  mutate(Predicted = df_test$TARGET_WINS, model = "Model 2"),
-                mult_lm_final_2 %>% 
-                  predict(df_test) %>% as.data.frame() %>% 
-                  mutate(Predicted = df_test$TARGET_WINS, model = "Model 3")) %>% 
-      rename("Observed" = ".") %>% 
-      mutate(dataset = "Testing Set")
-  )
+```{r}
+model2_glm_pred = ifelse(predict(model2, type = "link") > 0.5, "Yes", "No")
 
-# Plot each model with datapoints, model prediction line and R^2
-#results %>% 
-#  ggplot(mapping = aes(x = Observed, y = Predicted)) +
-#  geom_point(pch =21, alpha = 0.3, fill = "skyblue") +
-#  geom_smooth(method = "lm", color = "red3") +
-#  facet_wrap(dataset~model) +
-#  stat_poly_eq(aes(label = paste(..adj.rr.label.., sep = "~~~")), 
-#                   label.x.npc = "left", label.y.npc = .9,
-#                   formula = y~x, parse = TRUE, size = 3.5)+
-#  theme(panel.background = element_blank(),
-#        panel.grid = element_blank())
-
+cleaneddftesting$model2 <- ifelse(predict.glm(model2, cleaneddftesting, "response") >= 0.5, 1, 0)
+cm2 <- confusionMatrix(factor(cleaneddftesting$model2), factor(cleaneddftesting$target), "1")
+results <- rbind(results, tibble(Model = "Model #2", Accuracy=cm2$byClass[11], F1 = cm2$byClass[7],
+                  Deviance= model2$deviance, 
+                  R2 = 1 - model2$deviance / model2$null.deviance,
+                  AIC= model2$aic))
+cm2
 ```
+
+
+```{r}
+model3_glm_pred = ifelse(predict(model3, type = "link") > 0.5, "Yes", "No")
+
+cleaneddftesting$model3 <- ifelse(predict.glm(model3, cleaneddftesting,"response") >= 0.5, 1, 0)
+cm3 <- confusionMatrix(factor(cleaneddftesting$model3), factor(cleaneddftesting$target), "1")
+results <- rbind(results, tibble(Model = "Model #3", Accuracy=cm3$byClass[11], F1 = cm3$byClass[7],
+                  Deviance=model3$deviance, 
+                  R2 = 1 - model3$deviance / model3$null.deviance,
+                  AIC=model3$aic))
+cm3
+```
+
+```{r}
+model4_glm_pred = ifelse(predict(model4, type = "link") > 0.5, "Yes", "No")
+
+cleaneddftesting$model4 <- ifelse(predict.glm(model4, cleaneddftesting,"response") >= 0.5, 1, 0)
+cm4 <- confusionMatrix(factor(cleaneddftesting$model4), factor(cleaneddftesting$target), "1")
+results <- rbind(results, tibble(Model = "Model #4", Accuracy=cm4$byClass[11], F1 = cm4$byClass[7],
+                  Deviance=model4$deviance, 
+                  R2 = 1 - model4$deviance / model4$null.deviance,
+                  AIC=model4$aic))
+cm4
+```
+```{r, message=False, warning=False}
+# par(pty = "s")
+roc(cleaneddftesting[["target"]], cleaneddftesting[["model1"]], plot = TRUE, legacy.axes = TRUE, print.auc = TRUE)
+roc(cleaneddftesting[["target"]], cleaneddftesting[["model2"]], plot = TRUE, legacy.axes = TRUE, print.auc = TRUE)
+roc(cleaneddftesting[["target"]], cleaneddftesting[["model3"]], plot = TRUE, legacy.axes = TRUE, print.auc = TRUE)
+roc(cleaneddftesting[["target"]], cleaneddftesting[["model4"]], plot = TRUE, legacy.axes = TRUE, print.auc = TRUE)
+```
+
+The following table discusses each of the model performance metrics on the training dataset. These values indicate there is a minor improvement in model performance after applying transformations and selecting for significant parameters.  
+
+```{r}
+# tibble(results)
+
+kable(results) %>% 
+  kable_styling(bootstrap_options = "basic", position = "center")
+```
+## TODO -- explain the results of model outputs
 
 The analysis shows the following results:
 
@@ -702,9 +609,145 @@ of 0.31 on the training set and 0.31 on the testing dataset.
 Model 3 - This model is based on a subset of significant predictors on an transformed dataset. Results for this model provided an R^2 of about 
 of 0.31 on the training set and 0.31 on the testing dataset.
 
-### Model of choice  
+
+
+```{r}
+# created empty data frame to store transformed variables
+df_temp_eval <- data.frame(matrix(ncol = 1, nrow = length(df_eval$medv)))
+
+# performed boxcox transformation after identifying proper lambda
+df_temp_eval$rm <- df_eval$rm
+rm_lambda <- BoxCox.lambda(df_eval$rm)
+df_temp_eval$rm_transform <- BoxCox(df_eval$rm, rm_lambda)
+
+df_temp_eval$nox <- df_eval$nox
+nox_lambda <- BoxCox.lambda(df_eval$nox)
+df_temp_eval$nox_transform <- BoxCox(df_eval$nox, nox_lambda)
+
+df_temp_eval$dis <- df_eval$dis
+df_temp_eval$dis_transform <- log(df_eval$dis)
+
+df_temp_eval$zn <- df_eval$zn
+df_temp_eval$zn_transform <- log(df_eval$zn+1)
+
+df_temp_eval$lstat <- df_eval$lstat
+df_temp_eval$lstat_transform <- log(df_eval$lstat)
+
+df_temp_eval$age <- df_eval$age
+df_temp_eval$age_transform <- log(max(df_eval$age) + 1 - df_eval$age)
+
+df_temp_eval$ptratio <- df_eval$ptratio
+df_temp_eval$ptratio_transform <- log(max(df_eval$ptratio) + 1 - df_eval$ptratio)
+
+df_temp_eval <- df_temp_eval[, 2:15]
+```
+
+
+
+```{r}
+# Build clean dataframe with transformation
+
+df_eval <- data.frame(cbind(df_eval, 
+                        rm_transform = df_temp_eval$rm_transform,
+                        nox_transform = df_temp_eval$nox_transform,
+                        dis_transform = df_temp_eval$dis_transform,
+                        zn_transform = df_temp_eval$zn_transform,
+                        lstat_transform = df_temp_eval$lstat_transform,
+                        age_transform = df_temp_eval$age_transform,
+                        ptratio_transform = df_temp_eval$ptratio_transform
+                        ))
+
+is.na(df_eval) <- sapply(df_eval, is.infinite)
+```
+
+
+### TODO -- Model of choice  
 
 Based on these analyses, Model 2 and Model 3 both performed marginally better than Model 1 and could be selected as the linear model of choice when looking at adjusted R2. However, there is greater statistical significance under the third model relative to the others and uses less unnecessary variables to compute our prediction without sacrificing much in terms of adjusted R^2 value. Additionally, Model 3 seems to have lower VIF scores than Models 1 and 2. Because of these factors, as well as its better adjustment for multicollinearity (we noticeably saw less sign-flipping in coefficients), model 3 would be the model of choice. 
+
+
+
+
+
+<!-- ## CODE FROM HOMEWORK 1 -->
+
+<!-- All models achieved a positive adjusted R^2 pointing to a weakly-positive relationship between the target variable TOTAL_WINs and the model predictor variables.  -->
+
+<!-- From the previous section and residual diagnostics (both the residual histogram and QQ plot)--all three models have normally distributed residuals with mean 0. There appears to be no heteroskedasticity (non-constant variance) or serial-correlation within the residuals--thus strictly from a linear regression perspective, none of the assumptions are violated and thus we can make inferential predictions based on our model.  -->
+
+<!-- Next looking at the F-statistic for all models were large and achieved a statistically significant p-value than than a default alpha of .05; thus for all three models the Null hypothesis that is rejected that 0s for our regression coefficients would fit the data better.  -->
+
+<!-- From the exploratory data analysis we saw that many of the predictor variables were correlated with each other--this makes sense given that baseball is a team sport, and thus different position scoring/runs helps contribute to wins. However this could be an issue from a multicolinearity, that can lead to unstable regression fits. From the previous section we used VIF (Variable Inflation Factor) to gauge better models by preferring VIF values less than 5.  -->
+
+
+<!-- ```{r} -->
+
+<!-- # Build summary table with each model performance metrics -->
+<!-- SummaryTable <- bind_rows( -->
+<!--   model_performance_extraction(lm_s), -->
+<!--   model_performance_extraction(lmf_s), -->
+<!--   model_performance_extraction(lmf_s_2) -->
+<!-- )  -->
+
+<!-- # Add row names -->
+<!-- #rownames(SummaryTable) <- c("Model 1", "Model 2", "Model 3") -->
+
+<!-- # Display nice format table -->
+<!-- SummaryTable %>%  -->
+<!--   kable() %>%  -->
+<!--   kable_styling( -->
+<!--     bootstrap_options = c("hover", "condensed", "responsive"), -->
+<!--     full_width = F) -->
+<!-- ``` -->
+
+<!-- The following figure represents the performance of 3 of the models on both the testing and on the training dataset. for this multiple linear regression problem, the adjusted R2 value was used as the metric for performance on predicting the target wins. -->
+
+<!-- ```{r, message = F} -->
+<!-- # Build prediction results dataset for plotting (each model with training and test data) -->
+<!-- results <- multi_lm %>% -->
+<!--   predict(df_train) %>%  -->
+<!--   as.data.frame() %>%  -->
+<!--   mutate(Predicted = df_train$TARGET_WINS, model = "Model 1") %>%  -->
+<!--   bind_rows(mult_lm_final %>%  -->
+<!--               predict(df_train) %>%  -->
+<!--               as.data.frame() %>%  -->
+<!--               mutate(Predicted = df_train$TARGET_WINS, model = "Model 2"), -->
+<!--             mult_lm_final_2 %>%  -->
+<!--               predict(df_train) %>%  -->
+<!--               as.data.frame() %>%  -->
+<!--               mutate(Predicted = df_train$TARGET_WINS, model = "Model 3")) %>%  -->
+<!--   rename("Observed" = ".") %>%  -->
+<!--   mutate(dataset = "Training Set") %>%  -->
+<!--   bind_rows( -->
+<!--     results_test <- multi_lm %>% -->
+<!--       predict(df_test) %>%  -->
+<!--       as.data.frame() %>% -->
+<!--       mutate(Predicted = df_test$TARGET_WINS, model = "Model 1") %>%  -->
+<!--       bind_rows(mult_lm_final %>%  -->
+<!--                   predict(df_test) %>%  -->
+<!--                   as.data.frame() %>%  -->
+<!--                   mutate(Predicted = df_test$TARGET_WINS, model = "Model 2"), -->
+<!--                 mult_lm_final_2 %>%  -->
+<!--                   predict(df_test) %>% as.data.frame() %>%  -->
+<!--                   mutate(Predicted = df_test$TARGET_WINS, model = "Model 3")) %>%  -->
+<!--       rename("Observed" = ".") %>%  -->
+<!--       mutate(dataset = "Testing Set") -->
+<!--   ) -->
+
+<!-- # Plot each model with datapoints, model prediction line and R^2 -->
+<!-- #results %>%  -->
+<!-- #  ggplot(mapping = aes(x = Observed, y = Predicted)) + -->
+<!-- #  geom_point(pch =21, alpha = 0.3, fill = "skyblue") + -->
+<!-- #  geom_smooth(method = "lm", color = "red3") + -->
+<!-- #  facet_wrap(dataset~model) + -->
+<!-- #  stat_poly_eq(aes(label = paste(..adj.rr.label.., sep = "~~~")),  -->
+<!-- #                   label.x.npc = "left", label.y.npc = .9, -->
+<!-- #                   formula = y~x, parse = TRUE, size = 3.5)+ -->
+<!-- #  theme(panel.background = element_blank(), -->
+<!-- #        panel.grid = element_blank()) -->
+
+<!-- ``` -->
+
 
 
 ## References
