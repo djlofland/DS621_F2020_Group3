@@ -614,6 +614,8 @@ of 0.31 on the training set and 0.31 on the testing dataset.
 
 
 
+## TODO - I set up syntax to compute the final predictions on the `df_eval` dataset, but needs a bit of work (note from Zach)
+
 ```{r}
 # created empty data frame to store transformed variables
 df_temp_eval <- data.frame(matrix(ncol = 1, nrow = length(df_eval$medv)))
