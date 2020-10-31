@@ -230,7 +230,7 @@ Next, we visualize the distribution profiles for each of the predictor variables
 
 ```{r, fig.height = 10, fig.width = 10, echo=FALSE}
 # Prepare data for ggplot
-gather_df <- df %>% select(-target) %>%
+gather_df <- df %>% dplyr::select(-target) %>%
   gather(key = 'variable', value = 'value')
 
 # Histogram plots of each variable
@@ -276,7 +276,7 @@ In addition to creating histogram distributions, we also elected to use box-plot
 
 ```{r, fig.height = 10, fig.width = 10, echo=FALSE}
 # Prepare data for ggplot
-gather_df <- df %>% select(-target) %>%
+gather_df <- df %>% dplyr::select(-target) %>%
   gather(key = 'variable', value = 'value')
 
 # Boxplots for each variable
@@ -459,12 +459,13 @@ Using our training dataset, we decided to run a binary logistic regression model
 model1 <- glm(target ~ zn + indus + chas + nox + rm + age + dis + rad + tax + ptratio + lstat + medv, data = cleaneddftraining , family = binomial)
 summary(model1)
 ```
-We also calculated VIF scores to measure effects of collinearity:
+We also calculated VIF scores to measure effects of collinearity as well as variable importance:
 ```{r}
 # print variable inflation factor score
 print('VIF scores of predictors')
 
 VIF(model1)
+variableImportancePlot(model1)
 ```
 
 
@@ -474,12 +475,13 @@ Model 2 was built using our transformed features.
 model2 <- glm(target ~ zn_transform + indus + chas + nox_transform + rm_transform + age_transform + dis_transform + rad + tax + ptratio_transform + lstat_transform + medv, data = cleaneddftraining , family = binomial)
 summary(model2)
 ```
-We also calculated VIF scores to measure effects of collinearity:
+We also calculated VIF scores to measure effects of collinearity as well as variable importance:
 ```{r}
 # print variable inflation factor score
 print('VIF scores of predictors')
 
 VIF(model2)
+variableImportancePlot(model2)
 ```
 Our next model we used a Stepwise AIC on model 1 (our model with non-transformed features) to pick which features were most relevant.
 
@@ -488,12 +490,13 @@ model3 <- model1 %>% stepAIC(trace = FALSE)
 summary(model3)
 ```
 
-We also calculated VIF scores to measure effects of collinearity:
+We also calculated VIF scores to measure effects of collinearity as well as variable importance:
 ```{r}
 # print variable inflation factor score
 print('VIF scores of predictors')
 
 VIF(model3)
+variableImportancePlot(model3)
 ```
 
 In our final model we used a Stepwise AIC on model 2 (our model with transformed features) to pick which features were most relevant.
@@ -502,12 +505,13 @@ In our final model we used a Stepwise AIC on model 2 (our model with transformed
 model4 <- model2 %>% stepAIC(trace = FALSE)
 summary(model4)
 ```
-We also calculated VIF scores to measure effects of collinearity:
+We also calculated VIF scores to measure effects of collinearity as well as variable importance:
 ```{r}
 # print variable inflation factor score
 print('VIF scores of predictors')
 
 VIF(model4)
+variableImportancePlot(model4)
 ```
 
 
@@ -599,22 +603,27 @@ The following table discusses each of the model performance metrics on the train
 
 kable(results) %>% 
   kable_styling(bootstrap_options = "basic", position = "center")
+
 ```
-## TODO -- explain the results of model outputs
+
+
+Looking at the F-statistic for all models were large and achieved a statistically significant p-value than than a default alpha of .05; thus for all three models the Null hypothesis that is rejected that 0s for our regression coefficients would fit the data better.
+
+From the exploratory data analysis we saw that many of the predictor variables were correlated with each other which could potentially be an issue from a multicolinearity, that can lead to unstable regression fits. From the previous section we used VIF (Variable Inflation Factor) to gauge better models by preferring VIF values less than 5. 
+
+Additionally, the model analysis showed that 'nox' (nitrous oxide emissions), and 'rad' (highway accessibility) were consistently greater predictors for each of the model's produced.
 
 The analysis shows the following results:
 
-Model 1 - This model is based on the all non-transformed variables. Results for this model provided an F1 value of 0.94, but . 
+Model 1 - This model is based on the all non-transformed variables. Results for this model provided an F1 value of 0.94, and an AUC AUC of 0.93. 
 
-Model 2 - This model is based on a subset of significant predictors on an un-transformed dataset. Results for this model provided an R^2 of about 
-of 0.31 on the training set and 0.31 on the testing dataset. 
-
-Model 3 - This model is based on a subset of significant predictors on an transformed dataset. Results for this model provided an R^2 of about 
-of 0.31 on the training set and 0.31 on the testing dataset.
+Model 2 - This model is based on a subset of significant predictors on an un-transformed dataset. Results for this model provided an F1 value of 0.94, and an AUC AUC of 0.95. 
 
 
+Model 3 - This model is based on a subset of significant predictors on an transformed dataset. Results for this model provided an F1 value of 0.93, and an AUC AUC of 0.93. 
 
-## TODO - I set up syntax to compute the final predictions on the `df_eval` dataset, but needs a bit of work (note from Zach)
+Model 3 - This model is based on a subset of significant predictors on an transformed dataset. Results for this model provided an F1 value of 0.92, and an AUC AUC of 0.92. 
+
 
 ```{r}
 # created empty data frame to store transformed variables
@@ -666,9 +675,9 @@ is.na(df_eval) <- sapply(df_eval, is.infinite)
 ```
 
 
-## TODO -- Model of choice  
+## Model of choice  
 
-Based on these analyses, Model 2 and Model 3 both performed marginally better than Model 1 and could be selected as the linear model of choice when looking at adjusted R2. However, there is greater statistical significance under the third model relative to the others and uses less unnecessary variables to compute our prediction without sacrificing much in terms of adjusted R^2 value. Additionally, Model 3 seems to have lower VIF scores than Models 1 and 2. Because of these factors, as well as its better adjustment for multicollinearity (we noticeably saw less sign-flipping in coefficients), model 3 would be the model of choice. 
+Based on these analyses, Model 1 and Model 2 both performed marginally better than Model 4 but model 2 performed besed when looking at the AUC and f-statistic. This would be the selected model of choice. This model also produced the greatest R^2, However, one thing to note is that there is greater deviance under the third model relative to the others. 
 
 
 
