@@ -442,13 +442,14 @@ First we decided to split our datasets (both original and transformed) into test
 # origdfTrain <- createDataPartition(df$target, p=0.8, list=FALSE)
 # origdftraining <- df[origdfTrain,]
 # origdftesting <- df[-origdfTrain,]
+set.seed(123456)
 
 # utilizing one dataset for all four models
 cleaneddfTrain <- createDataPartition(clean_df$target, p=0.8, list=FALSE)
 cleaneddftraining <- clean_df[cleaneddfTrain,]
 cleaneddftesting <- clean_df[-cleaneddfTrain,]
 
-set.seed(123456)
+
 ```
 
 
