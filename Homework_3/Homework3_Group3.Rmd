@@ -607,22 +607,14 @@ kable(results) %>%
 ```
 
 
-Looking at the F-statistic for all models were large and achieved a statistically significant p-value than than a default alpha of .05; thus for all three models the Null hypothesis that is rejected that 0s for our regression coefficients would fit the data better.
+The above table summarizes the accuracy, F-statitics, deviance, R^2 (McFaden) and AIC of all of our models. 
 
-From the exploratory data analysis we saw that many of the predictor variables were correlated with each other which could potentially be an issue from a multicolinearity, that can lead to unstable regression fits. From the previous section we used VIF (Variable Inflation Factor) to gauge better models by preferring VIF values less than 5. 
+Overall--Model 4 had the highest accuracy and F statistic and AIC Model 2 had the lowest deviance and highest R^2.
 
-Additionally, the model analysis showed that 'nox' (nitrous oxide emissions), and 'rad' (highway accessibility) were consistently greater predictors for each of the model's produced.
-
-The analysis shows the following results:
-
-Model 1 - This model is based on the all non-transformed variables. Results for this model provided an F1 value of 0.94, and an AUC AUC of 0.93. 
-
-Model 2 - This model is based on a subset of significant predictors on an un-transformed dataset. Results for this model provided an F1 value of 0.94, and an AUC AUC of 0.95. 
+Model 1 and Model 3 had near identical accuracy, F statistic, deviance and R^2--and differed only in AIC, with model 3 having a slightly lower (172.76 vs 175.99). Since both models are based on the raw untransformed data, and model 3 was just an optimized AIC, this makes sense, and is probably due to the removal of a variable that has no predictive power. In relation to the other models, none of the untransformed models achieved any of the highest metrics, which we think is due to the lack of transformation/processing the data.
 
 
-Model 3 - This model is based on a subset of significant predictors on an transformed dataset. Results for this model provided an F1 value of 0.93, and an AUC AUC of 0.93. 
-
-Model 3 - This model is based on a subset of significant predictors on an transformed dataset. Results for this model provided an F1 value of 0.92, and an AUC AUC of 0.92. 
+Model 2 and Model 4 both had lower AIC than Model 1 and Model 3, however Model 2 has a higher AIC than Model 4--once again this makes sense since Model 4 is an optimized AIC of model 2. Model 2 the lowest accuracy and F statistic of our group of models but highest R^2 and lowest deviance. 
 
 
 ```{r}
@@ -677,9 +669,7 @@ is.na(df_eval) <- sapply(df_eval, is.infinite)
 
 ## Model of choice  
 
-Based on these analyses, Model 1 and Model 2 both performed marginally better than Model 4 but model 2 performed besed when looking at the AUC and f-statistic. This would be the selected model of choice. This model also produced the greatest R^2, However, one thing to note is that there is greater deviance under the third model relative to the others. 
-
-
+Based on all of our models we selected Model 4--which had the highest F-statistic and accuracy. Its deviance and R^2 was 2nd best (to model 2), and more importantly it had the lowest AIC, which via occams razor, shows a simpler model is better.
 
 
 
