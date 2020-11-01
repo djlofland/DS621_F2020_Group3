@@ -1,8 +1,8 @@
 ---
-title: 'DS 621 Fall2020: Homework 3 (Group3)'
+title: 'DS 621 Fall2020: Homework 4 (Group4)'
 subtitle: 'Crime Logistic Regression'
 author: 'Zach Alexander, Sam Bellows, Donny Lofland, Joshua Registe, Neil Shah, Aaron Zalki'
-data: '09/26/2020'
+data: '11/20/2020'
 output:
   html_document:  
     theme: cerulean
@@ -202,29 +202,38 @@ summary(df)
 
 ```
 
-***text to be added***
+### Check Class Bias
 
+Next, we wanted to get an idea of the distribution profiles for each of the variables. We have two target values, 0 and 1. When building models, we ideally want an equal representation of both classes. As class imbalance deviates, our model performance will suffer both form effects of differential variance between the classes and bias towards picking the more represented class. For logistic regression, if we see strong imbalance, we can 1) up-sample the smaller group, down-sample the larger group, or adjust our threshold for assigning the predicted value away from 0.5.
 
-### Distributions
-
-Next, we wanted to get an idea of the distribution profiles for each of the variables. 
 
 
 ```{r, fig.height = 10, fig.width = 10, echo=FALSE}
 
-DataExplorer::plot_correlation(data = df,type = "all",cor_args = list("use" = "pairwise.complete.obs"))
+prop.table(table(df$TARGET_FLAG)) %>% kable() %>% 
+    kable_styling(
+      full_width = F) %>% 
+    add_header_above(header = c("Classification of Target Flag"=2))
 
+```
+
+
+The classes are not perfectly balanced, with approximately 73.6% 0’s and 26.4% 1’s.With unbalanced class distributions it is often necessary to artificially balance the classes to achieve good results. upsampling or downsampling may be required to achieve class balance with this dataset. We will evaluate model performance accordingly.
+
+
+
+### Distributions
+
+```{r, fig.height = 10, fig.width = 10, echo=FALSE}
 DataExplorer::plot_bar(
   data = df,
          order_bar = T,
          ggtheme=theme_bw())
-
-table(df$TARGET_FLAG) %>% kable() %>% 
-    kable_styling(
-      full_width = F) %>% 
-    add_header_above(header = c("Classification of Target Flag"=2))
 ```
 
+
+
+Next, we visualize the distribution profiles for each of the predictor variables. This will help us to make a plan on which variable to include, how they might be related to each other or the target, and finally identify outliers or transformations that might help improve model resolution.
 
 ```{r, fig.height = 10, fig.width = 10, echo=FALSE}
 DataExplorer::plot_histogram(
@@ -232,18 +241,22 @@ DataExplorer::plot_histogram(
    data = df,
          ggtheme=theme_bw())
 
-DataExplorer::plot_scatterplot(
-    data = dplyr::select_if(df,is.numeric),
-    by = "TARGET_AMT",
-         ggtheme=theme_bw(),
-    theme_config = list(axis.text.x = element_text(angle = 90)))
-
-
-
 ```
 
-```{r}
+The distribution profiles show the prevalence of kurtosis, specifically right skew in variables `TRAVTIME`, `OLDCLAIM`, `MVR_PTS`, `TARGET_AMT`, `INCOME`, `BLUEBOOK` and approximately normal distributions in `YOJ`, `CARAGE`, `HOME_VAL` and `AGE`. when deviations are skewed from a traditional normal distribution, this can be problematic for regression assumptions, and thus we might need to transform the data. Under logistic regression, we will need to dummify factor based variables for the model to understand the data.
 
+
+While we don't tackle feature engineering in this analysis, if we were performing a more in-depth analysis, we could leverage the package, `mixtools` (see R Vignette).  This package helps regress *mixed models* where data can be subdivided into subgroups. 
+
+Lastly, several features have both a distribution along with a high number of values at an extreme. However, based on the feature meanings and provided information, there is no reason to believe that any of these extreme values are mistakes, data errors, or otherwise inexplicable. As such, we will not remove the extreme values, as they represent valuable data and could be predictive of the target.
+
+
+### Boxplots
+
+In addition to creating histogram distributions, we also elected to use box-plots to get an idea of the spread of the response variable `TARGET_AMT` in relation to all of the non-numeric variables. Two sets of boxplots are shown below due to the wide distribution of the response variable. The first set of boxplots highlights the entire range and shows how the cost of car crashes peaks relative the specific category. 
+
+
+```{r, fig.height = 10, fig.width = 10, echo=FALSE}
 
 df_character_wide<-
 df %>% select_if(function(col) is.numeric(col)==F | all(col==.$TARGET_AMT)) %>% 
@@ -256,23 +269,55 @@ df_character_wide %>%
   theme(axis.text.x = element_text(angle = 90))
 
 ```
+The second set of box plots simply shows these same distributions "zoomed in" by adjusting the axis to allow for a visual of the interquartile range of the response variable relative to each of categorical predictors. 
 
+```{r, fig.height = 10, fig.width = 10, echo=FALSE}
 
-
-```{r}
-                 
 df_character_wide %>% 
   ggplot(mapping = aes(x = value, y = TARGET_AMT))+
   geom_boxplot()+facet_wrap(.~variable, scales="free")+
   theme_bw()+
   theme(axis.text.x = element_text(angle = 90))+
-  coord_cartesian(ylim = c(NA,10000))
+  coord_cartesian(ylim = c(NA,5000))
 
 ```
 
+
+### Variable Plots
+
+We wanted to plot scatter plots of each variable versus the target variable to get an idea of the relationship between them. The scatter. There are some notable trends as observed in the scatterplots below such as our response variable `TARGET_AMT` is likely to be lower when individuals have more kids at home as indicated by the `HOMEKIDS` feature, and when they have more teenagers driving the car indicated by the feature `KIDSDRIV`. 
+Additionally a pairwise comparison plot between all features, both numeric and non-numeric is shown following the scatterplot where this initially implies that there aren't a significant amount of correlated features and this can give some insight into expected significance and performing dimensionality reduction on the datasets for the models.
+
+```{r, fig.height = 10, fig.width = 10, echo=FALSE}
+
+DataExplorer::plot_scatterplot(
+    data = dplyr::select_if(df,is.numeric),
+    by = "TARGET_AMT",
+         ggtheme=theme_bw(),
+    theme_config = list(axis.text.x = element_text(angle = 90)))
+
+
+DataExplorer::plot_correlation(data = df,type = "all",cor_args = list("use" = "pairwise.complete.obs"))
+
+
+
+```
+
+### Data Sparsity Check
+
+Finally, we can observe the sparsity of information within our dataset by using the `DataExplorer` package to assess missing information.
 
 ```{r}
 
-DataExplorer::plot_missing(df)
+DataExplorer::plot_missing(df,ggtheme = theme_bw())
 
 ```
+
+We can see that generally our dataset is in good shape, however some imputation may be needed for `INCOME`, `YOJ`, `HOME_VAL`, and `CAR_AGE`. 
+
+
+
+
+
+
+
