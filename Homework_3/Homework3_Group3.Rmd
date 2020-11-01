@@ -682,7 +682,18 @@ is.na(df_eval) <- sapply(df_eval, is.infinite)
 
 Based on all of our models we selected Model 4--which had the highest F-statistic and accuracy. Its deviance and R^2 was 2nd best (to model 2), and more importantly it had the lowest AIC, which via occams razor, shows a simpler model is better.
 
+## Predictions
 
+We apply model 4 to the held out evaluation set to predict the targets for these 40 instances. We have saved these predictions in the .csv file eval_predictions.
+
+```{r, echo=F}
+eval_data <- df_eval %>% select(c(zn_transform, indus, chas, nox_transform, rm_transform, age_transform, dis_transform, rad, tax, ptratio_transform, lstat_transform, medv))
+predictions <- ifelse(predict(model4, eval_data, type = "link") > 0.5, 1, 0)
+df_eval['target'] <- predictions
+
+write.csv(df_eval, 'eval_predictions.csv', row.names=F)
+predictions
+```
 
 <!-- ## CODE FROM HOMEWORK 1 -->
 
