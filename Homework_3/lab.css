@@ -69,3 +69,7 @@ ul {
 hr {
     border: 1px solid #357FAA;
 }
+
+pre {
+    font-size: 0.9rem;
+}
