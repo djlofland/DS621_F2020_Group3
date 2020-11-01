@@ -615,14 +615,14 @@ Additionally, the model analysis showed that 'nox' (nitrous oxide emissions), an
 
 The analysis shows the following results:
 
-Model 1 - This model is based on the all non-transformed variables. Results for this model provided an F1 value of 0.94, and an AUC AUC of 0.93. 
+Model 1 - This model is based on the all non-transformed variables. Results for this model provided an F1 value of 0.94, and an ROC AUC of 0.93. 
 
-Model 2 - This model is based on a subset of significant predictors on an un-transformed dataset. Results for this model provided an F1 value of 0.94, and an AUC AUC of 0.95. 
+Model 2 - This model is based on a subset of significant predictors on an un-transformed dataset. Results for this model provided an F1 value of 0.94, and an ROC AUC of 0.95. 
 
 
-Model 3 - This model is based on a subset of significant predictors on an transformed dataset. Results for this model provided an F1 value of 0.93, and an AUC AUC of 0.93. 
+Model 3 - This model is based on a subset of significant predictors on an transformed dataset. Results for this model provided an F1 value of 0.93, and an ROC AUC of 0.93. 
 
-Model 3 - This model is based on a subset of significant predictors on an transformed dataset. Results for this model provided an F1 value of 0.92, and an AUC AUC of 0.92. 
+Model 4 - This model is based on a subset of significant predictors on an transformed dataset. Results for this model provided an F1 value of 0.92, and an ROC AUC of 0.92. 
 
 
 ```{r}
