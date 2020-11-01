@@ -610,21 +610,21 @@ kable(results) %>%
 
 The above table summarizes the accuracy, F-statitics, deviance, R^2 (McFaden) and AIC of all of our models. 
 
-Overall--Model 4 had the highest accuracy and F statistic and AIC Model 2 had the lowest deviance and highest R^2.
+In terms of absolute metrics: 
 
-Model 1 and Model 3 had near identical accuracy, F statistic, deviance and R^2--and differed only in AIC, with model 3 having a slightly lower (172.76 vs 175.99). Since both models are based on the raw untransformed data, and model 3 was just an optimized AIC, this makes sense, and is probably due to the removal of a variable that has no predictive power. In relation to the other models, none of the untransformed models achieved any of the highest metrics, which we think is due to the lack of transformation/processing the data.
+Model 1 had the highest accuracy and F-statistic.
+Model 2 had the highest R^2 (Mcfaden psuedo) and lowest deviance
+Model 4 had the lowest AIC. 
 
+Recall that Model 1 consisted of the untransformed data, Model 2 was transformed data, and Model 3 & 4, were steswise AIC optimizations of said models. 
 
-Model 1 - This model is based on the all non-transformed variables. Results for this model provided an F1 value of 0.94, and an ROC AUC of 0.93. 
+When looking at model 1 vs model 2--while model 1 had higher accuracy, and essentially the same F-statistics, model 2 had a lower deviance and AIC, and higher R^2. This shows that model 2 was of higher quality and fit, with less error than model 1, albeit slightly less accurate. 
 
-Model 2 - This model is based on a subset of significant predictors on an un-transformed dataset. Results for this model provided an F1 value of 0.94, and an ROC AUC of 0.95. 
+Looking at Model 1 vs Model 3 we see that model 1 had a high Accuracy, F-statistic, lower deviance, and higher R^2  than model 3. Model 3 had a lower AIC--but this is to be expected as it's a optimized AIC of model 1. This result is interesting as it shows that while model 3 is a higher quality (lower AIC), it doesn't have stronger predictive power (R^2 and deviation. )
 
+Model 2 and Model 4 shared the same accuracy and F1, and differed slightly in deviance, R^2 and AIC--this was expected since Model 4 is an stepwise AIC optimization.
 
-Model 3 - This model is based on a subset of significant predictors on an transformed dataset. Results for this model provided an F1 value of 0.93, and an ROC AUC of 0.93. 
-
-Model 4 - This model is based on a subset of significant predictors on an transformed dataset. Results for this model provided an F1 value of 0.92, and an ROC AUC of 0.92. 
-
-Model 2 and Model 4 both had lower AIC than Model 1 and Model 3, however Model 2 has a higher AIC than Model 4--once again this makes sense since Model 4 is an optimized AIC of model 2. Model 2 the lowest accuracy and F statistic of our group of models but highest R^2 and lowest deviance. 
+Finally comparing Model 3 and Model 4, we can make the same generalizations from Model 1 and Model 2, since both models are the basis--Model 4 was of better quality/fit with less deviation, albeit slightly less accurate. 
 
 
 
@@ -680,7 +680,10 @@ is.na(df_eval) <- sapply(df_eval, is.infinite)
 
 ## Model of choice  
 
-Based on all of our models we selected Model 4--which had the highest F-statistic and accuracy. Its deviance and R^2 was 2nd best (to model 2), and more importantly it had the lowest AIC, which via occams razor, shows a simpler model is better.
+Based on all of our models we gave the edge to model 2 and model 4, given that they fit the data (Higher R^2, lower AIC, lower deviance) than their counterparts. 
+
+Ultimately when choosing between both models--we chose Model 4 as all thing equal (which they shared accuracy, F-statistic, and McFaden R-squared), it had a lower AIC, and therefore was a higher quality model. 
+
 
 ## Predictions
 
