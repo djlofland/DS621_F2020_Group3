@@ -686,6 +686,8 @@ Ultimately when choosing between both models--we chose Model 4 as all thing equa
 
 We apply model 4 to the held out evaluation set to predict the targets for these 40 instances. We have saved these predictions in the .csv file eval_predictions.
 
+Source code: [https://github.com/djlofland/DS621_F2020_Group3/tree/master/Homework_3/eval_predictions.csv](https://github.com/djlofland/DS621_F2020_Group3/tree/master/Homework_3/eval_predictions.csv)
+
 ```{r, echo=F}
 eval_data <- df_eval %>% select(c(zn_transform, indus, chas, nox_transform, rm_transform, age_transform, dis_transform, rad, tax, ptratio_transform, lstat_transform, medv))
 predictions <- ifelse(predict(model4, eval_data, type = "link") > 0.5, 1, 0)
