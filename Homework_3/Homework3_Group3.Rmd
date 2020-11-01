@@ -191,7 +191,7 @@ There are two files provided:
 * **crime-evaluation-data_modified.csv** - holdout data used to for evaluation.  Note this dataset doesn't include the target column so while we can predict classes, our model will have to be scored by an outside group with knowledge of the actual classes.
 
 ```{r load_data, echo=FALSE}
-# Load crime baseball dataset
+# Load crime dataset
 df <- read.csv('datasets/crime-training-data_modified.csv')
 df_eval <- read.csv('datasets/crime-evaluation-data_modified.csv')
 ```
@@ -407,7 +407,6 @@ With our transformations complete, we can now add these into our `clean_df` data
 ```{r}
 # Build clean dataframe with transformation
 
-# [TODO - update all this code]
 clean_df <- data.frame(cbind(clean_df, 
                         rm_transform = df_temp$rm_transform,
                         nox_transform = df_temp$nox_transform,
@@ -438,18 +437,12 @@ First, we decided to split our cleaned dataset into a training and testing set (
 First we decided to split our datasets (both original and transformed) into test/train split (20/80).
 
 ```{r}
-
-# origdfTrain <- createDataPartition(df$target, p=0.8, list=FALSE)
-# origdftraining <- df[origdfTrain,]
-# origdftesting <- df[-origdfTrain,]
 set.seed(123456)
 
 # utilizing one dataset for all four models
 cleaneddfTrain <- createDataPartition(clean_df$target, p=0.8, list=FALSE)
 cleaneddftraining <- clean_df[cleaneddfTrain,]
 cleaneddftesting <- clean_df[-cleaneddfTrain,]
-
-
 ```
 
 
@@ -600,11 +593,8 @@ roc(cleaneddftesting[["target"]], cleaneddftesting[["model4"]], plot = TRUE, leg
 The following table discusses each of the model performance metrics on the training dataset. These values indicate there is a minor improvement in model performance after applying transformations and selecting for significant parameters.  
 
 ```{r}
-# tibble(results)
-
 kable(results) %>% 
   kable_styling(bootstrap_options = "basic", position = "center")
-
 ```
 
 
@@ -695,87 +685,6 @@ write.csv(df_eval, 'eval_predictions.csv', row.names=F)
 predictions
 ```
 
-<!-- ## CODE FROM HOMEWORK 1 -->
-
-<!-- All models achieved a positive adjusted R^2 pointing to a weakly-positive relationship between the target variable TOTAL_WINs and the model predictor variables.  -->
-
-<!-- From the previous section and residual diagnostics (both the residual histogram and QQ plot)--all three models have normally distributed residuals with mean 0. There appears to be no heteroskedasticity (non-constant variance) or serial-correlation within the residuals--thus strictly from a linear regression perspective, none of the assumptions are violated and thus we can make inferential predictions based on our model.  -->
-
-<!-- Next looking at the F-statistic for all models were large and achieved a statistically significant p-value than than a default alpha of .05; thus for all three models the Null hypothesis that is rejected that 0s for our regression coefficients would fit the data better.  -->
-
-<!-- From the exploratory data analysis we saw that many of the predictor variables were correlated with each other--this makes sense given that baseball is a team sport, and thus different position scoring/runs helps contribute to wins. However this could be an issue from a multicolinearity, that can lead to unstable regression fits. From the previous section we used VIF (Variable Inflation Factor) to gauge better models by preferring VIF values less than 5.  -->
-
-
-<!-- ```{r} -->
-
-<!-- # Build summary table with each model performance metrics -->
-<!-- SummaryTable <- bind_rows( -->
-<!--   model_performance_extraction(lm_s), -->
-<!--   model_performance_extraction(lmf_s), -->
-<!--   model_performance_extraction(lmf_s_2) -->
-<!-- )  -->
-
-<!-- # Add row names -->
-<!-- #rownames(SummaryTable) <- c("Model 1", "Model 2", "Model 3") -->
-
-<!-- # Display nice format table -->
-<!-- SummaryTable %>%  -->
-<!--   kable() %>%  -->
-<!--   kable_styling( -->
-<!--     bootstrap_options = c("hover", "condensed", "responsive"), -->
-<!--     full_width = F) -->
-<!-- ``` -->
-
-<!-- The following figure represents the performance of 3 of the models on both the testing and on the training dataset. for this multiple linear regression problem, the adjusted R2 value was used as the metric for performance on predicting the target wins. -->
-
-<!-- ```{r, message = F} -->
-<!-- # Build prediction results dataset for plotting (each model with training and test data) -->
-<!-- results <- multi_lm %>% -->
-<!--   predict(df_train) %>%  -->
-<!--   as.data.frame() %>%  -->
-<!--   mutate(Predicted = df_train$TARGET_WINS, model = "Model 1") %>%  -->
-<!--   bind_rows(mult_lm_final %>%  -->
-<!--               predict(df_train) %>%  -->
-<!--               as.data.frame() %>%  -->
-<!--               mutate(Predicted = df_train$TARGET_WINS, model = "Model 2"), -->
-<!--             mult_lm_final_2 %>%  -->
-<!--               predict(df_train) %>%  -->
-<!--               as.data.frame() %>%  -->
-<!--               mutate(Predicted = df_train$TARGET_WINS, model = "Model 3")) %>%  -->
-<!--   rename("Observed" = ".") %>%  -->
-<!--   mutate(dataset = "Training Set") %>%  -->
-<!--   bind_rows( -->
-<!--     results_test <- multi_lm %>% -->
-<!--       predict(df_test) %>%  -->
-<!--       as.data.frame() %>% -->
-<!--       mutate(Predicted = df_test$TARGET_WINS, model = "Model 1") %>%  -->
-<!--       bind_rows(mult_lm_final %>%  -->
-<!--                   predict(df_test) %>%  -->
-<!--                   as.data.frame() %>%  -->
-<!--                   mutate(Predicted = df_test$TARGET_WINS, model = "Model 2"), -->
-<!--                 mult_lm_final_2 %>%  -->
-<!--                   predict(df_test) %>% as.data.frame() %>%  -->
-<!--                   mutate(Predicted = df_test$TARGET_WINS, model = "Model 3")) %>%  -->
-<!--       rename("Observed" = ".") %>%  -->
-<!--       mutate(dataset = "Testing Set") -->
-<!--   ) -->
-
-<!-- # Plot each model with datapoints, model prediction line and R^2 -->
-<!-- #results %>%  -->
-<!-- #  ggplot(mapping = aes(x = Observed, y = Predicted)) + -->
-<!-- #  geom_point(pch =21, alpha = 0.3, fill = "skyblue") + -->
-<!-- #  geom_smooth(method = "lm", color = "red3") + -->
-<!-- #  facet_wrap(dataset~model) + -->
-<!-- #  stat_poly_eq(aes(label = paste(..adj.rr.label.., sep = "~~~")),  -->
-<!-- #                   label.x.npc = "left", label.y.npc = .9, -->
-<!-- #                   formula = y~x, parse = TRUE, size = 3.5)+ -->
-<!-- #  theme(panel.background = element_blank(), -->
-<!-- #        panel.grid = element_blank()) -->
-
-<!-- ``` -->
-
-
-
 ## References
 
 - A Modern Approach to Regression with R: Simon Sheather
@@ -825,6 +734,7 @@ library(mixtools)
 library(tidymodels)
 library(ggpmisc)
 library(regclass)
+library(pROC)
 
 #' Print a side-by-side Histogram and QQPlot of Residuals
 #'
@@ -918,9 +828,354 @@ model_performance_extraction <- function(model=NULL) {
              "F-Statistic" = model$fstatistic[1])
 }
 
+
 # =====================================================================================
 # Load Data set
 # =====================================================================================
 
+# Load crime dataset
+df <- read.csv('datasets/crime-training-data_modified.csv')
+df_eval <- read.csv('datasets/crime-evaluation-data_modified.csv')
 
+# =====================================================================================
+# Summary Stats 
+# =====================================================================================
+
+# Display summary statistics
+summary(df)
+
+# =====================================================================================
+# Check Class Bias 
+# =====================================================================================
+
+class_proportion = colMeans(df['target'])
+class_proportion
+
+# =====================================================================================
+# Distributions 
+# =====================================================================================
+
+# Prepare data for ggplot
+gather_df <- df %>% dplyr::select(-target) %>%
+  gather(key = 'variable', value = 'value')
+
+# Histogram plots of each variable
+ggplot(gather_df) + 
+  geom_histogram(aes(x=value, y = ..density..), bins=30) + 
+  geom_density(aes(x=value), color='blue') +
+  facet_wrap(. ~variable, scales='free', ncol=3)
+     
+# =====================================================================================
+# Boxplots 
+# =====================================================================================
+
+# Prepare data for ggplot
+gather_df <- df %>% dplyr::select(-target) %>%
+  gather(key = 'variable', value = 'value')
+
+# Boxplots for each variable
+ggplot(gather_df, aes(variable, value)) + 
+  geom_boxplot() + 
+  facet_wrap(. ~variable, scales='free', ncol=6)
+
+# =====================================================================================
+# Variable Plots
+# =====================================================================================
+  
+# Plot scatter plots of each variable versus the target variable
+featurePlot(df[,1:ncol(df)-1], df[,ncol(df)], pch = 20)
+
+
+# =====================================================================================
+# Missing Data 
+# =====================================================================================
+
+# Identify missing data by Feature and display percent breakout
+missing <- colSums(df %>% sapply(is.na))
+missing_pct <- round(missing / nrow(df) * 100, 2)
+stack(sort(missing_pct, decreasing = TRUE))
+
+# =====================================================================================
+# Handle Outliers
+# =====================================================================================
+
+clean_df <- df
+
+
+# =====================================================================================
+# Feature-Target Correlations 
+# =====================================================================================
+
+# Show feature correlations/target by decreasing correlation
+stack(sort(cor(df[,13], df[,1:ncol(df)-1])[,], decreasing=TRUE))
+
+# =====================================================================================
+# Multicolinearity 
+# =====================================================================================
+
+# Calculate and plot the Multicolinearity
+correlation = cor(clean_df, use = 'pairwise.complete.obs')
+
+corrplot(correlation, 'ellipse', type = 'lower', order = 'hclust',
+         col=brewer.pal(n=8, name="RdYlBu"))
+
+# =====================================================================================
+# Transform non-normal variables 
+# =====================================================================================
+         
+# created empty data frame to store transformed variables
+df_temp <- data.frame(matrix(ncol = 1, nrow = length(clean_df$target)))
+
+# performed boxcox transformation after identifying proper lambda
+df_temp$rm <- clean_df$rm
+rm_lambda <- BoxCox.lambda(clean_df$rm)
+df_temp$rm_transform <- BoxCox(clean_df$rm, rm_lambda)
+
+df_temp$nox <- clean_df$nox
+nox_lambda <- BoxCox.lambda(clean_df$nox)
+df_temp$nox_transform <- BoxCox(clean_df$nox, nox_lambda)
+
+df_temp$dis <- clean_df$dis
+df_temp$dis_transform <- log(clean_df$dis)
+
+df_temp$zn <- clean_df$zn
+df_temp$zn_transform <- log(clean_df$zn+1)
+
+df_temp$lstat <- clean_df$lstat
+df_temp$lstat_transform <- log(clean_df$lstat)
+
+df_temp$age <- clean_df$age
+df_temp$age_transform <- log(max(clean_df$age) + 1 - clean_df$age)
+
+df_temp$ptratio <- clean_df$ptratio
+df_temp$ptratio_transform <- log(max(clean_df$ptratio) + 1 - clean_df$ptratio)
+
+df_temp <- df_temp[, 2:15]
+
+histbox(df_temp, c(6, 2))
+
+# =====================================================================================
+# Final Cleaned Dataframe with transformations
+# =====================================================================================
+
+clean_df <- data.frame(cbind(clean_df, 
+                        rm_transform = df_temp$rm_transform,
+                        nox_transform = df_temp$nox_transform,
+                        dis_transform = df_temp$dis_transform,
+                        zn_transform = df_temp$zn_transform,
+                        lstat_transform = df_temp$lstat_transform,
+                        age_transform = df_temp$age_transform,
+                        ptratio_transform = df_temp$ptratio_transform
+                        ))
+
+is.na(clean_df) <- sapply(clean_df, is.infinite)
+
+# =====================================================================================
+# Splitting dataset into training and test set
+# =====================================================================================
+
+set.seed(123456)
+
+# utilizing one dataset for all four models
+cleaneddfTrain <- createDataPartition(clean_df$target, p=0.8, list=FALSE)
+cleaneddftraining <- clean_df[cleaneddfTrain,]
+cleaneddftesting <- clean_df[-cleaneddfTrain,]
+
+# =====================================================================================
+# Model 1 (without stepAIC and without transformed variables)
+# =====================================================================================
+
+# Model 1 - Include all non-transformed features without stepAIC
+
+model1 <- glm(target ~ zn + indus + chas + nox + rm + age + dis + rad + tax + ptratio + lstat + medv, data = cleaneddftraining , family = binomial)
+
+summary(model1)
+
+# print variable inflation factor score
+print('VIF scores of predictors')
+
+# model 1 - print variable inflation factor score
+VIF(model1)
+
+# Model 1 - Display Variable feature importance plot
+variableImportancePlot(model1)
+
+# =====================================================================================
+# Model 2 (without stepAIC and with transformed variables)
+# =====================================================================================
+
+
+# Model 2 - Includes tranformed features without stepAIC
+
+model2 <- glm(target ~ zn_transform + indus + chas + nox_transform + rm_transform + age_transform + dis_transform + rad + tax + ptratio_transform + lstat_transform + medv, data = cleaneddftraining , family = binomial)
+summary(model2)
+
+
+# print variable inflation factor score
+print('VIF scores of predictors')
+
+VIF(model2)
+variableImportancePlot(model2)
+
+# =====================================================================================
+# Model 3 (takes Model 1 and runs through stepAIC)
+# =====================================================================================
+
+model3 <- model1 %>% stepAIC(trace = FALSE)
+summary(model3)
+
+# print variable inflation factor score
+print('VIF scores of predictors')
+
+VIF(model3)
+variableImportancePlot(model3)
+
+# =====================================================================================
+# Model 4 (takes Model 2 and runs through stepAIC)
+# =====================================================================================
+
+model4 <- model2 %>% stepAIC(trace = FALSE)
+summary(model4)
+
+# print variable inflation factor score
+print('VIF scores of predictors')
+
+VIF(model4)
+variableImportancePlot(model4)
+
+# =====================================================================================
+# Model 1 Confusion Matrix
+# =====================================================================================
+
+model1_glm_pred = ifelse(predict(model1, type = "link") > 0.5, "Yes", "No")
+
+cleaneddftesting$model1 <- ifelse(predict.glm(model1, cleaneddftesting, "response") >= 0.5, 1, 0)
+cm1 <- confusionMatrix(factor(cleaneddftesting$model1), factor(cleaneddftesting$target), "1")
+results <- tibble(Model = "Model #1", Accuracy=cm1$byClass[11], F1 = cm1$byClass[7],
+                  Deviance= model1$deviance, 
+                  R2 = 1 - model1$deviance / model1$null.deviance,
+                  AIC= model1$aic)
+cm1
+
+# =====================================================================================
+# Model 2 Confusion Matrix
+# =====================================================================================
+
+
+model2_glm_pred = ifelse(predict(model2, type = "link") > 0.5, "Yes", "No")
+
+cleaneddftesting$model2 <- ifelse(predict.glm(model2, cleaneddftesting, "response") >= 0.5, 1, 0)
+cm2 <- confusionMatrix(factor(cleaneddftesting$model2), factor(cleaneddftesting$target), "1")
+results <- rbind(results, tibble(Model = "Model #2", Accuracy=cm2$byClass[11], F1 = cm2$byClass[7],
+                  Deviance= model2$deviance, 
+                  R2 = 1 - model2$deviance / model2$null.deviance,
+                  AIC= model2$aic))
+cm2
+
+# =====================================================================================
+# Model 3 Confusion Matrix
+# =====================================================================================
+
+model3_glm_pred = ifelse(predict(model3, type = "link") > 0.5, "Yes", "No")
+
+cleaneddftesting$model3 <- ifelse(predict.glm(model3, cleaneddftesting,"response") >= 0.5, 1, 0)
+cm3 <- confusionMatrix(factor(cleaneddftesting$model3), factor(cleaneddftesting$target), "1")
+results <- rbind(results, tibble(Model = "Model #3", Accuracy=cm3$byClass[11], F1 = cm3$byClass[7],
+                  Deviance=model3$deviance, 
+                  R2 = 1 - model3$deviance / model3$null.deviance,
+                  AIC=model3$aic))
+cm3
+
+# =====================================================================================
+# Model 4 Confusion Matrix
+# =====================================================================================
+
+model4_glm_pred = ifelse(predict(model4, type = "link") > 0.5, "Yes", "No")
+
+cleaneddftesting$model4 <- ifelse(predict.glm(model4, cleaneddftesting,"response") >= 0.5, 1, 0)
+cm4 <- confusionMatrix(factor(cleaneddftesting$model4), factor(cleaneddftesting$target), "1")
+results <- rbind(results, tibble(Model = "Model #4", Accuracy=cm4$byClass[11], F1 = cm4$byClass[7],
+                  Deviance=model4$deviance, 
+                  R2 = 1 - model4$deviance / model4$null.deviance,
+                  AIC=model4$aic))
+cm4
+
+# =====================================================================================
+# Comparison of ROC Curves
+# =====================================================================================
+
+# par(pty = "s")
+roc(cleaneddftesting[["target"]], cleaneddftesting[["model1"]], plot = TRUE, legacy.axes = TRUE, print.auc = TRUE)
+roc(cleaneddftesting[["target"]], cleaneddftesting[["model2"]], plot = TRUE, legacy.axes = TRUE, print.auc = TRUE)
+roc(cleaneddftesting[["target"]], cleaneddftesting[["model3"]], plot = TRUE, legacy.axes = TRUE, print.auc = TRUE)
+roc(cleaneddftesting[["target"]], cleaneddftesting[["model4"]], plot = TRUE, legacy.axes = TRUE, print.auc = TRUE)
+
+# =====================================================================================
+# Displaying results of model outputs
+# =====================================================================================
+
+kable(results) %>% 
+  kable_styling(bootstrap_options = "basic", position = "center")
+  
+
+# =====================================================================================
+# Transforming features in evaluation set
+# =====================================================================================
+  
+# created empty data frame to store transformed variables
+df_temp_eval <- data.frame(matrix(ncol = 1, nrow = length(df_eval$medv)))
+
+# performed boxcox transformation after identifying proper lambda
+df_temp_eval$rm <- df_eval$rm
+rm_lambda <- BoxCox.lambda(df_eval$rm)
+df_temp_eval$rm_transform <- BoxCox(df_eval$rm, rm_lambda)
+
+df_temp_eval$nox <- df_eval$nox
+nox_lambda <- BoxCox.lambda(df_eval$nox)
+df_temp_eval$nox_transform <- BoxCox(df_eval$nox, nox_lambda)
+
+df_temp_eval$dis <- df_eval$dis
+df_temp_eval$dis_transform <- log(df_eval$dis)
+
+df_temp_eval$zn <- df_eval$zn
+df_temp_eval$zn_transform <- log(df_eval$zn+1)
+
+df_temp_eval$lstat <- df_eval$lstat
+df_temp_eval$lstat_transform <- log(df_eval$lstat)
+
+df_temp_eval$age <- df_eval$age
+df_temp_eval$age_transform <- log(max(df_eval$age) + 1 - df_eval$age)
+
+df_temp_eval$ptratio <- df_eval$ptratio
+df_temp_eval$ptratio_transform <- log(max(df_eval$ptratio) + 1 - df_eval$ptratio)
+
+df_temp_eval <- df_temp_eval[, 2:15]
+
+# =====================================================================================
+# Adding transformed features to evaluation set
+# =====================================================================================
+
+df_eval <- data.frame(cbind(df_eval, 
+                        rm_transform = df_temp_eval$rm_transform,
+                        nox_transform = df_temp_eval$nox_transform,
+                        dis_transform = df_temp_eval$dis_transform,
+                        zn_transform = df_temp_eval$zn_transform,
+                        lstat_transform = df_temp_eval$lstat_transform,
+                        age_transform = df_temp_eval$age_transform,
+                        ptratio_transform = df_temp_eval$ptratio_transform
+                        ))
+
+is.na(df_eval) <- sapply(df_eval, is.infinite)
+
+
+# =====================================================================================
+# Making predictions on evaluation set with Model #4, printing to csv
+# =====================================================================================
+
+eval_data <- df_eval %>% select(c(zn_transform, indus, chas, nox_transform, rm_transform, age_transform, dis_transform, rad, tax, ptratio_transform, lstat_transform, medv))
+predictions <- ifelse(predict(model4, eval_data, type = "link") > 0.5, 1, 0)
+df_eval['target'] <- predictions
+
+write.csv(df_eval, 'eval_predictions.csv', row.names=F)
+predictions
 ```

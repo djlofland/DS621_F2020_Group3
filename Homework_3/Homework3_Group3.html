@@ -2327,15 +2327,15 @@ Model #4
 <p>The above table summarizes the accuracy, F-statitics, deviance, R^2 (McFaden) and AIC of all of our models.</p>
 <p>In terms of absolute metrics:</p>
 <p>Model 1 had the highest accuracy and F-statistic. Model 2 had the highest R^2 (Mcfaden psuedo) and lowest deviance Model 4 had the lowest AIC.</p>
-<p>Recall that Model 1 consisted of the untransformed data, Model 2 was transformed data, and Model 3 &amp; 4, were steswise AIC optimizations of said models.</p>
+<p>Recall that Model 1 consisted of the untransformed data, Model 2 was transformed data, and Model 3 &amp; 4, were stepwise AIC optimizations of said models.</p>
 <p>When looking at model 1 vs model 2–while model 1 had higher accuracy, and essentially the same F-statistics, model 2 had a lower deviance and AIC, and higher R^2. This shows that model 2 was of higher quality and fit, with less error than model 1, albeit slightly less accurate.</p>
-<p>Looking at Model 1 vs Model 3 we see that model 1 had a high Accuracy, F-statistic, lower deviance, and higher R^2 than model 3. Model 3 had a lower AIC–but this is to be expected as it’s a optimized AIC of model 1. This result is interesting as it shows that while model 3 is a higher quality (lower AIC), it doesn’t have stronger predictive power (R^2 and deviation. )</p>
-<p>Model 2 and Model 4 shared the same accuracy and F1, and differed slightly in deviance, R^2 and AIC–this was expected since Model 4 is an stepwise AIC optimization.</p>
+<p>Looking at Model 1 vs Model 3 we see that model 1 had a high Accuracy, F-statistic, lower deviance, and higher R^2 than model 3. Model 3 had a lower AIC–but this is to be expected as it’s an optimized AIC of model 1. This result is interesting as it shows that while model 3 is a higher quality (lower AIC), it doesn’t have stronger predictive power (R^2 and deviation.)</p>
+<p>Model 2 and Model 4 shared the same accuracy and F1, and differed slightly in deviance, R^2 and AIC–this was expected since Model 4 is a stepwise AIC optimization.</p>
 <p>Finally comparing Model 3 and Model 4, we can make the same generalizations from Model 1 and Model 2, since both models are the basis–Model 4 was of better quality/fit with less deviation, albeit slightly less accurate.</p>
 </div>
 <div id="model-of-choice" class="section level2">
 <h2>Model of choice</h2>
-<p>Based on all of our models we gave the edge to model 2 and model 4, given that they fit the data (Higher R^2, lower AIC, lower deviance) than their counterparts.</p>
+<p>Based on all of our models we gave the edge to model 2 and model 4, given that they fit the data (Higher R^2, lower AIC, lower deviance) better than their counterparts.</p>
 <p>Ultimately when choosing between both models–we chose Model 4 as all thing equal (which they shared accuracy, F-statistic, and McFaden R-squared), it had a lower AIC, and therefore was a higher quality model.</p>
 </div>
 <div id="predictions" class="section level2">
@@ -2345,71 +2345,6 @@ Model #4
 ##  0  1  1  1  0  0  0  0  0  0  0  0  1  1  1  0  0  1  0  0  0  0  0  0  0  1 
 ## 27 28 29 30 31 32 33 34 35 36 37 38 39 40 
 ##  0  1  1  1  1  1  1  1  1  1  1  1  1  1</code></pre>
-<!-- ## CODE FROM HOMEWORK 1 -->
-<!-- All models achieved a positive adjusted R^2 pointing to a weakly-positive relationship between the target variable TOTAL_WINs and the model predictor variables.  -->
-<!-- From the previous section and residual diagnostics (both the residual histogram and QQ plot)--all three models have normally distributed residuals with mean 0. There appears to be no heteroskedasticity (non-constant variance) or serial-correlation within the residuals--thus strictly from a linear regression perspective, none of the assumptions are violated and thus we can make inferential predictions based on our model.  -->
-<!-- Next looking at the F-statistic for all models were large and achieved a statistically significant p-value than than a default alpha of .05; thus for all three models the Null hypothesis that is rejected that 0s for our regression coefficients would fit the data better.  -->
-<!-- From the exploratory data analysis we saw that many of the predictor variables were correlated with each other--this makes sense given that baseball is a team sport, and thus different position scoring/runs helps contribute to wins. However this could be an issue from a multicolinearity, that can lead to unstable regression fits. From the previous section we used VIF (Variable Inflation Factor) to gauge better models by preferring VIF values less than 5.  -->
-<!-- ```{r} -->
-<!-- # Build summary table with each model performance metrics -->
-<!-- SummaryTable <- bind_rows( -->
-<!--   model_performance_extraction(lm_s), -->
-<!--   model_performance_extraction(lmf_s), -->
-<!--   model_performance_extraction(lmf_s_2) -->
-<!-- )  -->
-<!-- # Add row names -->
-<!-- #rownames(SummaryTable) <- c("Model 1", "Model 2", "Model 3") -->
-<!-- # Display nice format table -->
-<!-- SummaryTable %>%  -->
-<!--   kable() %>%  -->
-<!--   kable_styling( -->
-<!--     bootstrap_options = c("hover", "condensed", "responsive"), -->
-<!--     full_width = F) -->
-<!-- ``` -->
-<!-- The following figure represents the performance of 3 of the models on both the testing and on the training dataset. for this multiple linear regression problem, the adjusted R2 value was used as the metric for performance on predicting the target wins. -->
-<!-- ```{r, message = F} -->
-<!-- # Build prediction results dataset for plotting (each model with training and test data) -->
-<!-- results <- multi_lm %>% -->
-<!--   predict(df_train) %>%  -->
-<!--   as.data.frame() %>%  -->
-<!--   mutate(Predicted = df_train$TARGET_WINS, model = "Model 1") %>%  -->
-<!--   bind_rows(mult_lm_final %>%  -->
-<!--               predict(df_train) %>%  -->
-<!--               as.data.frame() %>%  -->
-<!--               mutate(Predicted = df_train$TARGET_WINS, model = "Model 2"), -->
-<!--             mult_lm_final_2 %>%  -->
-<!--               predict(df_train) %>%  -->
-<!--               as.data.frame() %>%  -->
-<!--               mutate(Predicted = df_train$TARGET_WINS, model = "Model 3")) %>%  -->
-<!--   rename("Observed" = ".") %>%  -->
-<!--   mutate(dataset = "Training Set") %>%  -->
-<!--   bind_rows( -->
-<!--     results_test <- multi_lm %>% -->
-<!--       predict(df_test) %>%  -->
-<!--       as.data.frame() %>% -->
-<!--       mutate(Predicted = df_test$TARGET_WINS, model = "Model 1") %>%  -->
-<!--       bind_rows(mult_lm_final %>%  -->
-<!--                   predict(df_test) %>%  -->
-<!--                   as.data.frame() %>%  -->
-<!--                   mutate(Predicted = df_test$TARGET_WINS, model = "Model 2"), -->
-<!--                 mult_lm_final_2 %>%  -->
-<!--                   predict(df_test) %>% as.data.frame() %>%  -->
-<!--                   mutate(Predicted = df_test$TARGET_WINS, model = "Model 3")) %>%  -->
-<!--       rename("Observed" = ".") %>%  -->
-<!--       mutate(dataset = "Testing Set") -->
-<!--   ) -->
-<!-- # Plot each model with datapoints, model prediction line and R^2 -->
-<!-- #results %>%  -->
-<!-- #  ggplot(mapping = aes(x = Observed, y = Predicted)) + -->
-<!-- #  geom_point(pch =21, alpha = 0.3, fill = "skyblue") + -->
-<!-- #  geom_smooth(method = "lm", color = "red3") + -->
-<!-- #  facet_wrap(dataset~model) + -->
-<!-- #  stat_poly_eq(aes(label = paste(..adj.rr.label.., sep = "~~~")),  -->
-<!-- #                   label.x.npc = "left", label.y.npc = .9, -->
-<!-- #                   formula = y~x, parse = TRUE, size = 3.5)+ -->
-<!-- #  theme(panel.background = element_blank(), -->
-<!-- #        panel.grid = element_blank()) -->
-<!-- ``` -->
 </div>
 <div id="references" class="section level2">
 <h2>References</h2>
@@ -2462,6 +2397,7 @@ library(mixtools)
 library(tidymodels)
 library(ggpmisc)
 library(regclass)
+library(pROC)
 
 #&#39; Print a side-by-side Histogram and QQPlot of Residuals
 #&#39;
@@ -2555,11 +2491,356 @@ model_performance_extraction &lt;- function(model=NULL) {
              &quot;F-Statistic&quot; = model$fstatistic[1])
 }
 
+
 # =====================================================================================
 # Load Data set
 # =====================================================================================
 
-</code></pre>
+# Load crime dataset
+df &lt;- read.csv(&#39;datasets/crime-training-data_modified.csv&#39;)
+df_eval &lt;- read.csv(&#39;datasets/crime-evaluation-data_modified.csv&#39;)
+
+# =====================================================================================
+# Summary Stats 
+# =====================================================================================
+
+# Display summary statistics
+summary(df)
+
+# =====================================================================================
+# Check Class Bias 
+# =====================================================================================
+
+class_proportion = colMeans(df[&#39;target&#39;])
+class_proportion
+
+# =====================================================================================
+# Distributions 
+# =====================================================================================
+
+# Prepare data for ggplot
+gather_df &lt;- df %&gt;% dplyr::select(-target) %&gt;%
+  gather(key = &#39;variable&#39;, value = &#39;value&#39;)
+
+# Histogram plots of each variable
+ggplot(gather_df) + 
+  geom_histogram(aes(x=value, y = ..density..), bins=30) + 
+  geom_density(aes(x=value), color=&#39;blue&#39;) +
+  facet_wrap(. ~variable, scales=&#39;free&#39;, ncol=3)
+     
+# =====================================================================================
+# Boxplots 
+# =====================================================================================
+
+# Prepare data for ggplot
+gather_df &lt;- df %&gt;% dplyr::select(-target) %&gt;%
+  gather(key = &#39;variable&#39;, value = &#39;value&#39;)
+
+# Boxplots for each variable
+ggplot(gather_df, aes(variable, value)) + 
+  geom_boxplot() + 
+  facet_wrap(. ~variable, scales=&#39;free&#39;, ncol=6)
+
+# =====================================================================================
+# Variable Plots
+# =====================================================================================
+  
+# Plot scatter plots of each variable versus the target variable
+featurePlot(df[,1:ncol(df)-1], df[,ncol(df)], pch = 20)
+
+
+# =====================================================================================
+# Missing Data 
+# =====================================================================================
+
+# Identify missing data by Feature and display percent breakout
+missing &lt;- colSums(df %&gt;% sapply(is.na))
+missing_pct &lt;- round(missing / nrow(df) * 100, 2)
+stack(sort(missing_pct, decreasing = TRUE))
+
+# =====================================================================================
+# Handle Outliers
+# =====================================================================================
+
+clean_df &lt;- df
+
+
+# =====================================================================================
+# Feature-Target Correlations 
+# =====================================================================================
+
+# Show feature correlations/target by decreasing correlation
+stack(sort(cor(df[,13], df[,1:ncol(df)-1])[,], decreasing=TRUE))
+
+# =====================================================================================
+# Multicolinearity 
+# =====================================================================================
+
+# Calculate and plot the Multicolinearity
+correlation = cor(clean_df, use = &#39;pairwise.complete.obs&#39;)
+
+corrplot(correlation, &#39;ellipse&#39;, type = &#39;lower&#39;, order = &#39;hclust&#39;,
+         col=brewer.pal(n=8, name=&quot;RdYlBu&quot;))
+
+# =====================================================================================
+# Transform non-normal variables 
+# =====================================================================================
+         
+# created empty data frame to store transformed variables
+df_temp &lt;- data.frame(matrix(ncol = 1, nrow = length(clean_df$target)))
+
+# performed boxcox transformation after identifying proper lambda
+df_temp$rm &lt;- clean_df$rm
+rm_lambda &lt;- BoxCox.lambda(clean_df$rm)
+df_temp$rm_transform &lt;- BoxCox(clean_df$rm, rm_lambda)
+
+df_temp$nox &lt;- clean_df$nox
+nox_lambda &lt;- BoxCox.lambda(clean_df$nox)
+df_temp$nox_transform &lt;- BoxCox(clean_df$nox, nox_lambda)
+
+df_temp$dis &lt;- clean_df$dis
+df_temp$dis_transform &lt;- log(clean_df$dis)
+
+df_temp$zn &lt;- clean_df$zn
+df_temp$zn_transform &lt;- log(clean_df$zn+1)
+
+df_temp$lstat &lt;- clean_df$lstat
+df_temp$lstat_transform &lt;- log(clean_df$lstat)
+
+df_temp$age &lt;- clean_df$age
+df_temp$age_transform &lt;- log(max(clean_df$age) + 1 - clean_df$age)
+
+df_temp$ptratio &lt;- clean_df$ptratio
+df_temp$ptratio_transform &lt;- log(max(clean_df$ptratio) + 1 - clean_df$ptratio)
+
+df_temp &lt;- df_temp[, 2:15]
+
+histbox(df_temp, c(6, 2))
+
+# =====================================================================================
+# Final Cleaned Dataframe with transformations
+# =====================================================================================
+
+clean_df &lt;- data.frame(cbind(clean_df, 
+                        rm_transform = df_temp$rm_transform,
+                        nox_transform = df_temp$nox_transform,
+                        dis_transform = df_temp$dis_transform,
+                        zn_transform = df_temp$zn_transform,
+                        lstat_transform = df_temp$lstat_transform,
+                        age_transform = df_temp$age_transform,
+                        ptratio_transform = df_temp$ptratio_transform
+                        ))
+
+is.na(clean_df) &lt;- sapply(clean_df, is.infinite)
+
+# =====================================================================================
+# Splitting dataset into training and test set
+# =====================================================================================
+
+set.seed(123456)
+
+# utilizing one dataset for all four models
+cleaneddfTrain &lt;- createDataPartition(clean_df$target, p=0.8, list=FALSE)
+cleaneddftraining &lt;- clean_df[cleaneddfTrain,]
+cleaneddftesting &lt;- clean_df[-cleaneddfTrain,]
+
+# =====================================================================================
+# Model 1 (without stepAIC and without transformed variables)
+# =====================================================================================
+
+# Model 1 - Include all non-transformed features without stepAIC
+
+model1 &lt;- glm(target ~ zn + indus + chas + nox + rm + age + dis + rad + tax + ptratio + lstat + medv, data = cleaneddftraining , family = binomial)
+
+summary(model1)
+
+# print variable inflation factor score
+print(&#39;VIF scores of predictors&#39;)
+
+# model 1 - print variable inflation factor score
+VIF(model1)
+
+# Model 1 - Display Variable feature importance plot
+variableImportancePlot(model1)
+
+# =====================================================================================
+# Model 2 (without stepAIC and with transformed variables)
+# =====================================================================================
+
+
+# Model 2 - Includes tranformed features without stepAIC
+
+model2 &lt;- glm(target ~ zn_transform + indus + chas + nox_transform + rm_transform + age_transform + dis_transform + rad + tax + ptratio_transform + lstat_transform + medv, data = cleaneddftraining , family = binomial)
+summary(model2)
+
+
+# print variable inflation factor score
+print(&#39;VIF scores of predictors&#39;)
+
+VIF(model2)
+variableImportancePlot(model2)
+
+# =====================================================================================
+# Model 3 (takes Model 1 and runs through stepAIC)
+# =====================================================================================
+
+model3 &lt;- model1 %&gt;% stepAIC(trace = FALSE)
+summary(model3)
+
+# print variable inflation factor score
+print(&#39;VIF scores of predictors&#39;)
+
+VIF(model3)
+variableImportancePlot(model3)
+
+# =====================================================================================
+# Model 4 (takes Model 2 and runs through stepAIC)
+# =====================================================================================
+
+model4 &lt;- model2 %&gt;% stepAIC(trace = FALSE)
+summary(model4)
+
+# print variable inflation factor score
+print(&#39;VIF scores of predictors&#39;)
+
+VIF(model4)
+variableImportancePlot(model4)
+
+# =====================================================================================
+# Model 1 Confusion Matrix
+# =====================================================================================
+
+model1_glm_pred = ifelse(predict(model1, type = &quot;link&quot;) &gt; 0.5, &quot;Yes&quot;, &quot;No&quot;)
+
+cleaneddftesting$model1 &lt;- ifelse(predict.glm(model1, cleaneddftesting, &quot;response&quot;) &gt;= 0.5, 1, 0)
+cm1 &lt;- confusionMatrix(factor(cleaneddftesting$model1), factor(cleaneddftesting$target), &quot;1&quot;)
+results &lt;- tibble(Model = &quot;Model #1&quot;, Accuracy=cm1$byClass[11], F1 = cm1$byClass[7],
+                  Deviance= model1$deviance, 
+                  R2 = 1 - model1$deviance / model1$null.deviance,
+                  AIC= model1$aic)
+cm1
+
+# =====================================================================================
+# Model 2 Confusion Matrix
+# =====================================================================================
+
+
+model2_glm_pred = ifelse(predict(model2, type = &quot;link&quot;) &gt; 0.5, &quot;Yes&quot;, &quot;No&quot;)
+
+cleaneddftesting$model2 &lt;- ifelse(predict.glm(model2, cleaneddftesting, &quot;response&quot;) &gt;= 0.5, 1, 0)
+cm2 &lt;- confusionMatrix(factor(cleaneddftesting$model2), factor(cleaneddftesting$target), &quot;1&quot;)
+results &lt;- rbind(results, tibble(Model = &quot;Model #2&quot;, Accuracy=cm2$byClass[11], F1 = cm2$byClass[7],
+                  Deviance= model2$deviance, 
+                  R2 = 1 - model2$deviance / model2$null.deviance,
+                  AIC= model2$aic))
+cm2
+
+# =====================================================================================
+# Model 3 Confusion Matrix
+# =====================================================================================
+
+model3_glm_pred = ifelse(predict(model3, type = &quot;link&quot;) &gt; 0.5, &quot;Yes&quot;, &quot;No&quot;)
+
+cleaneddftesting$model3 &lt;- ifelse(predict.glm(model3, cleaneddftesting,&quot;response&quot;) &gt;= 0.5, 1, 0)
+cm3 &lt;- confusionMatrix(factor(cleaneddftesting$model3), factor(cleaneddftesting$target), &quot;1&quot;)
+results &lt;- rbind(results, tibble(Model = &quot;Model #3&quot;, Accuracy=cm3$byClass[11], F1 = cm3$byClass[7],
+                  Deviance=model3$deviance, 
+                  R2 = 1 - model3$deviance / model3$null.deviance,
+                  AIC=model3$aic))
+cm3
+
+# =====================================================================================
+# Model 4 Confusion Matrix
+# =====================================================================================
+
+model4_glm_pred = ifelse(predict(model4, type = &quot;link&quot;) &gt; 0.5, &quot;Yes&quot;, &quot;No&quot;)
+
+cleaneddftesting$model4 &lt;- ifelse(predict.glm(model4, cleaneddftesting,&quot;response&quot;) &gt;= 0.5, 1, 0)
+cm4 &lt;- confusionMatrix(factor(cleaneddftesting$model4), factor(cleaneddftesting$target), &quot;1&quot;)
+results &lt;- rbind(results, tibble(Model = &quot;Model #4&quot;, Accuracy=cm4$byClass[11], F1 = cm4$byClass[7],
+                  Deviance=model4$deviance, 
+                  R2 = 1 - model4$deviance / model4$null.deviance,
+                  AIC=model4$aic))
+cm4
+
+# =====================================================================================
+# Comparison of ROC Curves
+# =====================================================================================
+
+# par(pty = &quot;s&quot;)
+roc(cleaneddftesting[[&quot;target&quot;]], cleaneddftesting[[&quot;model1&quot;]], plot = TRUE, legacy.axes = TRUE, print.auc = TRUE)
+roc(cleaneddftesting[[&quot;target&quot;]], cleaneddftesting[[&quot;model2&quot;]], plot = TRUE, legacy.axes = TRUE, print.auc = TRUE)
+roc(cleaneddftesting[[&quot;target&quot;]], cleaneddftesting[[&quot;model3&quot;]], plot = TRUE, legacy.axes = TRUE, print.auc = TRUE)
+roc(cleaneddftesting[[&quot;target&quot;]], cleaneddftesting[[&quot;model4&quot;]], plot = TRUE, legacy.axes = TRUE, print.auc = TRUE)
+
+# =====================================================================================
+# Displaying results of model outputs
+# =====================================================================================
+
+kable(results) %&gt;% 
+  kable_styling(bootstrap_options = &quot;basic&quot;, position = &quot;center&quot;)
+  
+
+# =====================================================================================
+# Transforming features in evaluation set
+# =====================================================================================
+  
+# created empty data frame to store transformed variables
+df_temp_eval &lt;- data.frame(matrix(ncol = 1, nrow = length(df_eval$medv)))
+
+# performed boxcox transformation after identifying proper lambda
+df_temp_eval$rm &lt;- df_eval$rm
+rm_lambda &lt;- BoxCox.lambda(df_eval$rm)
+df_temp_eval$rm_transform &lt;- BoxCox(df_eval$rm, rm_lambda)
+
+df_temp_eval$nox &lt;- df_eval$nox
+nox_lambda &lt;- BoxCox.lambda(df_eval$nox)
+df_temp_eval$nox_transform &lt;- BoxCox(df_eval$nox, nox_lambda)
+
+df_temp_eval$dis &lt;- df_eval$dis
+df_temp_eval$dis_transform &lt;- log(df_eval$dis)
+
+df_temp_eval$zn &lt;- df_eval$zn
+df_temp_eval$zn_transform &lt;- log(df_eval$zn+1)
+
+df_temp_eval$lstat &lt;- df_eval$lstat
+df_temp_eval$lstat_transform &lt;- log(df_eval$lstat)
+
+df_temp_eval$age &lt;- df_eval$age
+df_temp_eval$age_transform &lt;- log(max(df_eval$age) + 1 - df_eval$age)
+
+df_temp_eval$ptratio &lt;- df_eval$ptratio
+df_temp_eval$ptratio_transform &lt;- log(max(df_eval$ptratio) + 1 - df_eval$ptratio)
+
+df_temp_eval &lt;- df_temp_eval[, 2:15]
+
+# =====================================================================================
+# Adding transformed features to evaluation set
+# =====================================================================================
+
+df_eval &lt;- data.frame(cbind(df_eval, 
+                        rm_transform = df_temp_eval$rm_transform,
+                        nox_transform = df_temp_eval$nox_transform,
+                        dis_transform = df_temp_eval$dis_transform,
+                        zn_transform = df_temp_eval$zn_transform,
+                        lstat_transform = df_temp_eval$lstat_transform,
+                        age_transform = df_temp_eval$age_transform,
+                        ptratio_transform = df_temp_eval$ptratio_transform
+                        ))
+
+is.na(df_eval) &lt;- sapply(df_eval, is.infinite)
+
+
+# =====================================================================================
+# Making predictions on evaluation set with Model #4, printing to csv
+# =====================================================================================
+
+eval_data &lt;- df_eval %&gt;% select(c(zn_transform, indus, chas, nox_transform, rm_transform, age_transform, dis_transform, rad, tax, ptratio_transform, lstat_transform, medv))
+predictions &lt;- ifelse(predict(model4, eval_data, type = &quot;link&quot;) &gt; 0.5, 1, 0)
+df_eval[&#39;target&#39;] &lt;- predictions
+
+write.csv(df_eval, &#39;eval_predictions.csv&#39;, row.names=F)
+predictions</code></pre>
 </div>
 </div>
 
