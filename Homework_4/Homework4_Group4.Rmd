@@ -317,7 +317,92 @@ We can see that generally our dataset is in good shape, however some imputation 
 
 
 
+## 2. Data Preparation
 
+To summarize our data preparation and exploration, we can distinguish our findings into a few categories below:
+
+### Removed Fields
+
+All the predictor variables have no missing values and show no indication of incomplete or incorrect data. As such, we have kept all the fields.
+
+### Missing Values
+
+Missing values will be imputed with the step_impute functions in the tidy models recipes
+
+### Outliers
+
+No outliers were removed as all values seemed reasonable. 
+
+
+### Transform non-normal variables
+
+Finally, as mentioned earlier in our data exploration, and our findings from our histogram plots, we can see that some of our variables are highly skewed. To address this, we decided to perform some transformations to make them more normally distributed. Here are some plots to demonstrate the changes in distributions before and after the transformations:  
+
+```{r, echo=FALSE, fig.height=5, fig.width=8, message=FALSE, warning=FALSE}
+
+# boxcox done on bluebook, 
+# performed boxcox transformation after identifying proper lambda
+# 
+# Performed log on Target AMT, and old claim
+
+transformative_cleaning<-function(DF){
+
+  return(
+    #transforming dataset with boxcox
+    DF %>% mutate_at(c("AGE","BLUEBOOK","CAR_AGE","HOME_VAL","INCOME","TIF","TRAVTIME"), 
+                     function(x) BoxCox(x, BoxCox.lambda(x))) %>% 
+      #transforming with log
+      mutate_at(c("TARGET_AMT","OLDCLAIM"),log) %>% 
+      #removing all infinite values generated from transformations
+      mutate_if(is.numeric, list(~na_if(., Inf))) %>% 
+      mutate_if(is.numeric, list(~na_if(., -Inf)))
+
+  )
+}
+
+```
+
+
+
+```{r, fig.height = 10, fig.width = 10, echo=FALSE}
+
+# Build clean dataframe with transformation
+
+clean_df <- transformative_cleaning(df)
+#View new distributions of nominal values
+DataExplorer::plot_histogram(
+  geom_histogram_args = list(alpha = 0.5),
+   data = clean_df,
+         ggtheme=theme_bw())
+
+```
+
+
+
+
+## 3. Build Models
+
+*Using the training data, build at least two different multiple linear regression models and three different binary logistic models, using different variables (or the same variables with different transformations). You may select the variables manually, use an approach such as Forward or Stepwise, use a different approach, or use a combination of techniques. Describe the techniques you used. If you manually selected a variable for inclusion into the model or exclusion into the model, indicate why this was done.* 
+*Be sure to explain how you can make inferences from the model, as well as discuss other relevant model output. Discuss the coefficients in the models, do they make sense? Are you keeping the model even though it is counter-intuitive? Why? The boss needs to know.* 
+
+### Linear Regression
+
+#### Linear Regression Model 1
+
+first model, no transformations, all nominal predictors included
+```{r}
+
+
+
+#75% data test training split
+set.seed(1)
+
+df_split<- initial_split(clean_df,.75)
+df_train<-training(df_split)
+df_test<-testing(df_split)
+
+
+```
 
 
 
