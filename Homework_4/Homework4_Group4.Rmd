@@ -14,7 +14,7 @@ output:
     extra_dependencies: ["geometry", "multicol", "multirow", "xcolor"]
 ---
 
-Source code: [https://github.com/djlofland/DS621_F2020_Group3/tree/master/Homework_3](https://github.com/djlofland/DS621_F2020_Group3/tree/master/Homework_3)
+Source code: [https://github.com/djlofland/DS621_F2020_Group3/tree/master/Homework_4](https://github.com/djlofland/DS621_F2020_Group3/tree/master/Homework_4)
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = FALSE, warning = FALSE)
@@ -166,7 +166,7 @@ initial_cleaning<- function(dataset){
 
 ## 1. Data Exploration
 
-*Describe the size and the variables in the insurance training data set. Consider that too much detail will cause a manager to lose interest whil too little detail will make the manager consider that you arent doing your job. Some suggestions are given below. Please do NOT treat this as a check list of things to do to complete the assignment.
+*Describe the size and the variables in the insurance training data set. Consider that too much detail will cause a manager to lose interest while too little detail will make the manager consider that you aren't doing your job. Some suggestions are given below. Please do NOT treat this as a checklist of things to do to complete the assignment.
 You should have your own thoughts on what to tell the boss. These are just ideas.*
 
 
@@ -204,7 +204,7 @@ summary(df)
 
 ### Check Class Bias
 
-Next, we wanted to get an idea of the distribution profiles for each of the variables. We have two target values, 0 and 1. When building models, we ideally want an equal representation of both classes. As class imbalance deviates, our model performance will suffer both form effects of differential variance between the classes and bias towards picking the more represented class. For logistic regression, if we see strong imbalance, we can 1) up-sample the smaller group, down-sample the larger group, or adjust our threshold for assigning the predicted value away from 0.5.
+Next, we wanted to get an idea of the distribution profiles for each of the variables. We have two target values, 0 and 1. When building models, we ideally want an equal representation of both classes. As class imbalance deviates, our model performance will suffer both form effects of differential variance between the classes and bias towards picking the more represented class. For logistic regression, if we see a strong imbalance, we can 1) up-sample the smaller group, down-sample the larger group, or adjust our threshold for assigning the predicted value away from 0.5.
 
 
 
@@ -218,7 +218,7 @@ prop.table(table(df$TARGET_FLAG)) %>% kable() %>%
 ```
 
 
-The classes are not perfectly balanced, with approximately 73.6% 0’s and 26.4% 1’s.With unbalanced class distributions it is often necessary to artificially balance the classes to achieve good results. upsampling or downsampling may be required to achieve class balance with this dataset. We will evaluate model performance accordingly.
+The classes are not perfectly balanced, with approximately 73.6% 0’s and 26.4% 1’s. With unbalanced class distributions, it is often necessary to artificially balance the classes to achieve good results. Up-sampling or Down-sampling may be required to achieve class balance with this dataset. We will evaluate model performance accordingly.
 
 
 
@@ -243,7 +243,7 @@ DataExplorer::plot_histogram(
 
 ```
 
-The distribution profiles show the prevalence of kurtosis, specifically right skew in variables `TRAVTIME`, `OLDCLAIM`, `MVR_PTS`, `TARGET_AMT`, `INCOME`, `BLUEBOOK` and approximately normal distributions in `YOJ`, `CARAGE`, `HOME_VAL` and `AGE`. when deviations are skewed from a traditional normal distribution, this can be problematic for regression assumptions, and thus we might need to transform the data. Under logistic regression, we will need to dummify factor based variables for the model to understand the data.
+The distribution profiles show the prevalence of kurtosis, specifically right skew in variables `TRAVTIME`, `OLDCLAIM`, `MVR_PTS`, `TARGET_AMT`, `INCOME`, `BLUEBOOK`, and approximately normal distributions in `YOJ`, `CARAGE`, `HOME_VAL`, and `AGE`. when deviations are skewed from traditional normal distribution, this can be problematic for regression assumptions, and thus we might need to transform the data. Under logistic regression, we will need to dummy factor-based variables for the model to understand the data.
 
 
 While we don't tackle feature engineering in this analysis, if we were performing a more in-depth analysis, we could leverage the package, `mixtools` (see R Vignette).  This package helps regress *mixed models* where data can be subdivided into subgroups. 
@@ -253,7 +253,7 @@ Lastly, several features have both a distribution along with a high number of va
 
 ### Boxplots
 
-In addition to creating histogram distributions, we also elected to use box-plots to get an idea of the spread of the response variable `TARGET_AMT` in relation to all of the non-numeric variables. Two sets of boxplots are shown below due to the wide distribution of the response variable. The first set of boxplots highlights the entire range and shows how the cost of car crashes peaks relative the specific category. 
+In addition to creating histogram distributions, we also elected to use box-plots to get an idea of the spread of the response variable `TARGET_AMT` in relation to all of the non-numeric variables. Two sets of boxplots are shown below due to the wide distribution of the response variable. The first set of boxplots highlights the entire range and shows how the cost of car crashes peaks relative to the specific category. 
 
 
 ```{r, fig.height = 10, fig.width = 10, echo=FALSE}
@@ -269,7 +269,8 @@ df_character_wide %>%
   theme(axis.text.x = element_text(angle = 90))
 
 ```
-The second set of box plots simply shows these same distributions "zoomed in" by adjusting the axis to allow for a visual of the interquartile range of the response variable relative to each of categorical predictors. 
+
+The second set of box plots simply shows these same distributions "zoomed in" by adjusting the axis to allow for a visual of the interquartile range of the response variable relative to each of the categorical predictors. 
 
 ```{r, fig.height = 10, fig.width = 10, echo=FALSE}
 
@@ -282,11 +283,11 @@ df_character_wide %>%
 
 ```
 
-
 ### Variable Plots
 
 We wanted to plot scatter plots of each variable versus the target variable to get an idea of the relationship between them. The scatter. There are some notable trends as observed in the scatterplots below such as our response variable `TARGET_AMT` is likely to be lower when individuals have more kids at home as indicated by the `HOMEKIDS` feature, and when they have more teenagers driving the car indicated by the feature `KIDSDRIV`. 
-Additionally a pairwise comparison plot between all features, both numeric and non-numeric is shown following the scatterplot where this initially implies that there aren't a significant amount of correlated features and this can give some insight into expected significance and performing dimensionality reduction on the datasets for the models.
+
+Additionally a pairwise comparison plot between all features, both numeric and non-numeric is shown following the scatterplot where this initially implies that there aren't a significant amount of correlated features and this can give some insight into the expected significance and performing dimensionality reduction on the datasets for the models.
 
 ```{r, fig.height = 10, fig.width = 10, echo=FALSE}
 
@@ -313,9 +314,7 @@ DataExplorer::plot_missing(df,ggtheme = theme_bw())
 
 ```
 
-We can see that generally our dataset is in good shape, however some imputation may be needed for `INCOME`, `YOJ`, `HOME_VAL`, and `CAR_AGE`. 
-
-
+We can see that generally, our dataset is in good shape, however, some imputation may be needed for `INCOME`, `YOJ`, `HOME_VAL`, and `CAR_AGE`. 
 
 ## 2. Data Preparation
 
@@ -327,7 +326,7 @@ All the predictor variables have no missing values and show no indication of inc
 
 ### Missing Values
 
-Missing values will be imputed with the step_impute functions in the tidy models recipes
+Missing values will be imputed with the step_impute functions in the tidy models recipes.
 
 ### Outliers
 
