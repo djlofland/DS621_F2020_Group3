@@ -169,27 +169,40 @@ initial_cleaning<- function(dataset){
 *Describe the size and the variables in the insurance training data set. Consider that too much detail will cause a manager to lose interest while too little detail will make the manager consider that you aren't doing your job. Some suggestions are given below. Please do NOT treat this as a checklist of things to do to complete the assignment.
 You should have your own thoughts on what to tell the boss. These are just ideas.*
 
-
-
+We'll first load in the insurance datasets:
 
 ```{r load_data, echo=FALSE}
-# Load Moneyball baseball dataset
+# Load insurance dataset
 df <- read.csv('datasets/insurance_training_data.csv')
 df_eval <- read.csv('datasets/insurance-evaluation-data.csv')
-
-
-
 ```
 
 
-Given that the Index column had no impact on the target variable, it was dropped as part of the initial cleaning function. Additionally, the fields "INCOME", "HOME_VAL", "OLDCLAIM", and, "BLUEBOOK", were imported as characters with "$" leaders and were converted to numeric as part of the initial cleaning function. both the training and evaluation datasets will pass through this treatment.
+Given that the Index column had no impact on the target variable, it was dropped as part of the initial cleaning function. Additionally, the fields "INCOME", "HOME_VAL", "OLDCLAIM", and, "BLUEBOOK", were imported as characters with "$" leaders and were converted to numeric as part of the initial cleaning function. Both the training and evaluation datasets will pass through this treatment.
 
 ```{r echo=FALSE}
 # Drop the INDEX column - this won't be useful and cleaning currency based character columns
 
 df<-initial_cleaning(df)
+df_eval <- initial_cleaning(df_eval)
 ```
 
+Now, with initial cleaning complete, we can take a quick look at the dimensions of both the training and evaluation datasets:
+
+**Dimensions of training dataset**
+
+```{r, echo=FALSE}
+dim(df)
+```
+**Dimensions of evaluation dataset**
+```{r, echo=FALSE}
+dim(df_eval)
+```
+It looks like we have 8,161 cases and 25 variables in the training dataset and 2,141 cases and 25 variables in the evaluation dataset.
+
+We can also provide a summary of each variable and it's theoretical effect it'll have on our models:
+
+![Variables of Interest](./images/features-explain.jpg)
 
 ### Summary Stats
 
@@ -199,16 +212,13 @@ We compiled summary statistics on our data set to better understand the data bef
 ```{r columns, echo=FALSE}
 # Display summary statistics
 summary(df)
-
 ```
 
 ### Check Class Bias
 
 Next, we wanted to get an idea of the distribution profiles for each of the variables. We have two target values, 0 and 1. When building models, we ideally want an equal representation of both classes. As class imbalance deviates, our model performance will suffer both form effects of differential variance between the classes and bias towards picking the more represented class. For logistic regression, if we see a strong imbalance, we can 1) up-sample the smaller group, down-sample the larger group, or adjust our threshold for assigning the predicted value away from 0.5.
 
-
-
-```{r, fig.height = 10, fig.width = 10, echo=FALSE}
+```{r, echo=FALSE}
 
 prop.table(table(df$TARGET_FLAG)) %>% kable() %>% 
     kable_styling(
@@ -243,7 +253,7 @@ DataExplorer::plot_histogram(
 
 ```
 
-The distribution profiles show the prevalence of kurtosis, specifically right skew in variables `TRAVTIME`, `OLDCLAIM`, `MVR_PTS`, `TARGET_AMT`, `INCOME`, `BLUEBOOK`, and approximately normal distributions in `YOJ`, `CARAGE`, `HOME_VAL`, and `AGE`. when deviations are skewed from traditional normal distribution, this can be problematic for regression assumptions, and thus we might need to transform the data. Under logistic regression, we will need to dummy factor-based variables for the model to understand the data.
+The distribution profiles show the prevalence of kurtosis, specifically right skew in variables `TRAVTIME`, `OLDCLAIM`, `MVR_PTS`, `TARGET_AMT`, `INCOME`, `BLUEBOOK`, and approximately normal distributions in `YOJ`, `CARAGE`, `HOME_VAL`, and `AGE`. When deviations are skewed from traditional normal distribution, this can be problematic for regression assumptions, and thus we might need to transform the data. Under logistic regression, we will need to dummy factor-based variables for the model to understand the data.
 
 
 While we don't tackle feature engineering in this analysis, if we were performing a more in-depth analysis, we could leverage the package, `mixtools` (see R Vignette).  This package helps regress *mixed models* where data can be subdivided into subgroups. 

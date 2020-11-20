@@ -52,6 +52,7 @@ library(ggpmisc)
 library(regclass)
 library(pROC)
 library(naniar)
+library(RANN)
 #' Print a side-by-side Histogram and QQPlot of Residuals
 #'
 #' @param model A model
@@ -166,7 +167,7 @@ You should have your own thoughts on what to tell the boss. These are just ideas
 
 
 ```{r load_data, echo=FALSE}
-# Load Moneyball baseball dataset
+# Load insurance dataset
 df <- read.csv('https://raw.githubusercontent.com/djlofland/DS621_F2020_Group3/master/Homework_4/datasets/insurance_training_data.csv')
 df_eval <- read.csv('https://raw.githubusercontent.com/djlofland/DS621_F2020_Group3/master/Homework_4/datasets/insurance-evaluation-data.csv')
 ```
@@ -177,13 +178,32 @@ Given that the Index column had no impact on the target variable, it was dropped
 ```{r echo=FALSE}
 # Drop the INDEX column - this won't be useful and cleaning currency based character columns
 df<-initial_cleaning(df)
+df_eval <- initial_cleaning(df_eval)
 ```
+
+Now, with initial cleaning complete, we can take a quick look at the dimensions of both the training and evaluation datasets:
+
+**Dimensions of training dataset**
+
+```{r, echo=FALSE}
+dim(df)
+```
+
+**Dimensions of evaluation dataset**
+
+```{r, echo=FALSE}
+dim(df_eval)
+```
+It looks like we have 8,161 cases and 25 variables in the training dataset and 2,141 cases and 25 variables in the evaluation dataset.
+
+We can also provide a summary of each variable and it's theoretical effect it'll have on our models:
+
+![Variables of Interest](./images/features-explain.jpg)
 
 
 ### Summary Stats
 
-We compiled summary statistics on our data set to better understand the data before modeling. 
-
+Next, we compiled summary statistics on our data set to better understand the data before modeling. 
 
 ```{r columns, echo=FALSE}
 # Display summary statistics
@@ -194,9 +214,7 @@ summary(df)
 
 Next, we wanted to get an idea of the distribution profiles for each of the variables. We have two target values, 0 and 1. When building models, we ideally want an equal representation of both classes. As class imbalance deviates, our model performance will suffer both form effects of differential variance between the classes and bias towards picking the more represented class. For logistic regression, if we see a strong imbalance, we can 1) up-sample the smaller group, down-sample the larger group, or adjust our threshold for assigning the predicted value away from 0.5.
 
-
-
-```{r, fig.height = 10, fig.width = 10, echo=FALSE}
+```{r, echo=FALSE}
 prop.table(table(df$TARGET_FLAG)) %>% kable() %>% 
     kable_styling(
       full_width = F) %>% 
@@ -210,7 +228,7 @@ The classes are not perfectly balanced, with approximately 73.6% 0’s and 26.4%
 
 ### Distributions
 
-```{r, fig.height = 10, fig.width = 10, echo=FALSE}
+```{r echo=FALSE}
 DataExplorer::plot_bar(
   data = df,
          order_bar = T,
@@ -266,7 +284,7 @@ df_character_wide %>%
 
 ### Variable Plots
 
-We wanted to plot scatter plots of each variable versus the target variable to get an idea of the relationship between them. The scatter. There are some notable trends as observed in the scatterplots below such as our response variable `TARGET_AMT` is likely to be lower when individuals have more kids at home as indicated by the `HOMEKIDS` feature, and when they have more teenagers driving the car indicated by the feature `KIDSDRIV`. 
+We wanted to plot scatter plots of each variable versus the target variable to get an idea of the relationship between them. There are some notable trends as observed in the scatterplots below such as our response variable `TARGET_AMT` is likely to be lower when individuals have more kids at home as indicated by the `HOMEKIDS` feature, and when they have more teenagers driving the car indicated by the feature `KIDSDRIV`. 
 
 Additionally a pairwise comparison plot between all features, both numeric and non-numeric is shown following the scatterplot where this initially implies that there aren't a significant amount of correlated features and this can give some insight into the expected significance and performing dimensionality reduction on the datasets for the models.
 
@@ -296,7 +314,6 @@ To summarize our data preparation and exploration, we can distinguish our findin
 ### Removed Fields
 
 All the predictor variables have a low enough percentage of missing values that they can be imputed and still provide useful information to the model. As such, we chose to keep all the fields.
-
 
 
 ### Missing Values
@@ -329,7 +346,7 @@ Finally, as mentioned earlier in our data exploration, and our findings from our
 # performed boxcox transformation after identifying proper lambda
 # 
 # Performed log on Target AMT, and old claim
-transformative_cleaning<-function(DF){
+transformative_cleaning<-function(DF, TEMP){
   return(
     #transforming dataset with boxcox
     DF %>% mutate_at(c("AGE","BLUEBOOK","CAR_AGE","HOME_VAL","INCOME","TIF","TRAVTIME"), 
@@ -338,25 +355,27 @@ transformative_cleaning<-function(DF){
       mutate_at(c("TARGET_AMT","OLDCLAIM"),log) %>% 
       #removing all infinite values generated from transformations
       mutate_if(is.numeric, list(~na_if(., Inf))) %>% 
-      mutate_if(is.numeric, list(~na_if(., -Inf)))
+      mutate_if(is.numeric, list(~na_if(., -Inf))) %>% 
+      rename("AGE_transform" = "AGE", "BLUEBOOK_transform" = "BLUEBOOK", "CAR_AGE_transform" = "CAR_AGE", "HOME_VAL_transform" = "HOME_VAL", "INCOME_transform" = "INCOME", "TIF_transform" = "TIF", "TRAVTIME_transform" = "TRAVTIME", "TARGET_AMT_transform" = "TARGET_AMT", "OLDCLAIM_transform" = "OLDCLAIM") %>% 
+      merge(TEMP, DF, by.x = 0, by.y = 0)
   )
 }
 ```
 
 
 
-```{r, fig.height = 10, fig.width = 10, echo=FALSE}
+```{r, fig.width = 10, fig.height = 8, echo=FALSE}
+df_temp <- df %>% select("AGE", "BLUEBOOK", "CAR_AGE", "HOME_VAL", "INCOME", "TIF", "TRAVTIME", "TARGET_AMT", "OLDCLAIM")
 # Build clean dataframe with transformation
-clean_df <- transformative_cleaning(df)
+clean_df <- transformative_cleaning(df, df_temp)
+clean_df <- clean_df[ , order(names(clean_df))]
 #View new distributions of nominal values
 DataExplorer::plot_histogram(
   geom_histogram_args = list(alpha = 0.5),
    data = clean_df,
          ggtheme=theme_bw())
 ```
-
-
-
+As we can see from above, our transformations helped to alleviate some of the kurtosis in the distributions that were highly skewed. Now, we can see that `AGE_transform`, `BLUEBOOK_transform`, `CAR_AGE_transform`, `HOME_VAL_transform`, `INCOME_transform`, `TIF_transform`, and `TRAVTIME_transform` are all the result of Boxcox transformations on the original variables. Additionally, `TARGET_AMT_transform` and `OLDCLAIM_transform` are the result of log transformations.
 
 ## 3. Build Models
 
@@ -374,5 +393,14 @@ set.seed(1)
 df_split<- initial_split(clean_df,.75)
 df_train<-training(df_split)
 df_test<-testing(df_split)
+```
+
+```{r}
+# Model 1 - Includes all nominal predictors and no transformations
+
+model1 <- lm(TARGET_WINS ~ BATTING_H + BATTING_2B + BATTING_3B + BATTING_HR + BATTING_BB + BATTING_SO + BASERUN_SB + BASERUN_CS + PITCHING_H + PITCHING_HR + PITCHING_BB + PITCHING_SO + FIELDING_E + FIELDING_DP, df_train)
+(lm_s <- summary(multi_lm))
+confint(multi_lm)
+residPlot(lm_s)
 ```
 
