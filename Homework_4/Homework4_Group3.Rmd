@@ -1,6 +1,6 @@
 ---
 title: 'DS 621 Fall2020: Homework 4 (Group4)'
-subtitle: 'Crime Logistic Regression'
+subtitle: 'Auto Insurance Regression'
 author: 'Zach Alexander, Sam Bellows, Donny Lofland, Joshua Registe, Neil Shah, Aaron Zalki'
 data: '11/20/2020'
 output:
@@ -295,7 +295,7 @@ To summarize our data preparation and exploration, we can distinguish our findin
 
 ### Removed Fields
 
-All the predictor variables have no missing values and show no indication of incomplete or incorrect data. As such, we have kept all the fields.
+All the predictor variables have a low enough percentage of missing values that they can be imputed and still provide useful information to the model. As such, we chose to keep all the fields.
 
 
 
