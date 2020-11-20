@@ -1,5 +1,5 @@
 ---
-title: 'DS 621 Fall2020: Homework 4 (Group4)'
+title: 'DS 621 Fall2020: Homework 4 (Group3)'
 subtitle: 'Auto Insurance Regression'
 author: 'Zach Alexander, Sam Bellows, Donny Lofland, Joshua Registe, Neil Shah, Aaron Zalki'
 data: '11/20/2020'
@@ -164,8 +164,6 @@ initial_cleaning<- function(dataset){
 You should have your own thoughts on what to tell the boss. These are just ideas.*
 
 
-
-
 ```{r load_data, echo=FALSE}
 # Load insurance dataset
 df <- read.csv('https://raw.githubusercontent.com/djlofland/DS621_F2020_Group3/master/Homework_4/datasets/insurance_training_data.csv')
@@ -321,7 +319,6 @@ All the predictor variables have a low enough percentage of missing values that 
 Missing values will be imputed with the step_impute functions in the tidy models recipes.
 
 ```{r, echo = TRUE}
-
 imputation <- preProcess(df, method = "knnImpute")
 predict_imputer <- predict(imputation, df)
 #compare to above chart
@@ -386,7 +383,7 @@ As we can see from above, our transformations helped to alleviate some of the ku
 
 #### Linear Regression Model 1
 
-first model, no transformations, all nominal predictors included
+**First linear regression model, no transformations, all nominal predictors included**
 ```{r}
 #75% data test training split
 set.seed(1)
@@ -398,9 +395,21 @@ df_test<-testing(df_split)
 ```{r}
 # Model 1 - Includes all nominal predictors and no transformations
 
-model1 <- lm(TARGET_WINS ~ BATTING_H + BATTING_2B + BATTING_3B + BATTING_HR + BATTING_BB + BATTING_SO + BASERUN_SB + BASERUN_CS + PITCHING_H + PITCHING_HR + PITCHING_BB + PITCHING_SO + FIELDING_E + FIELDING_DP, df_train)
-(lm_s <- summary(multi_lm))
-confint(multi_lm)
-residPlot(lm_s)
+model1 <- lm(TARGET_AMT ~ AGE + BLUEBOOK + CAR_AGE + CLM_FREQ + HOME_VAL + HOMEKIDS + INCOME + KIDSDRIV + MVR_PTS + OLDCLAIM + TIF + TRAVTIME + YOJ + CAR_TYPE + CAR_USE + EDUCATION + JOB + MSTATUS + PARENT1 + RED_CAR + REVOKED + SEX + URBANICITY, df_train)
+(mod1_sum <- summary(model1))
+confint(mod1_sum)
+residPlot(mod1_sum)
+```
+
+#### Linear Regression Model 2
+
+```{r}
+# Build model 2 - this is Model 1 with only significant features (using stepAIC)
+# model2 <- stepAIC(model1, direction = "both",
+#                          scope = list(upper = model1, lower = ~ 1),
+#                          scale = 0, trace = FALSE)
+# # Display Model 2 Summary
+# (mod2_sum <- summary(model2))
+
 ```
 
