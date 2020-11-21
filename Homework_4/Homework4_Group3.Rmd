@@ -472,12 +472,12 @@ linearM_results<- bind_rows(
 model3recipe<- 
   df_train %>% recipe(TARGET_AMT_transform~.) %>% 
   #remove all non numeric based variables
-  step_rm(all_nominal()) %>%
-  step_rm(c(AGE,YOJ,CLM_FREQ,INCOME_transform)) %>% 
+  recipes::step_rm(recipes::all_nominal()) %>%
+  recipes::step_rm(c(AGE,YOJ,CLM_FREQ,INCOME_transform)) %>% 
   #removing any heavily correlated predictor variables
-  step_corr(all_predictors()) %>% 
+  recipes::step_corr(recipes::all_predictors()) %>% 
   #removing any variables with low variance relative to response variable
-  step_nzv(all_predictors()) %>% 
+  recipes::step_nzv(recipes::all_predictors()) %>% 
   prep()
 
 #apply recipe to both train and test sets
@@ -485,10 +485,9 @@ m3train<-bake(model3recipe, new_data =  df_train)
 m3test<-bake(model3recipe,new_data= df_test)
 
 model3<-lm_spec %>% 
-  fit(TARGET_AMT_transform ~ .,data = m3train)
+  parsnip::fit(TARGET_AMT_transform ~ .,data = m3train)
 (mod3_sum <- summary(model3$fit))
 residPlot(mod3_sum)
-
 
 linearM_results<- bind_rows(
   linearM_results,
