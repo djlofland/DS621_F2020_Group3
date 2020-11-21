@@ -91,7 +91,7 @@ variableImportancePlot <- function(model=NULL, chart_title='Variable Importance 
   }
   
   # use caret and gglot to print a variable importance plot
-  varImp(model) %>% as.data.frame() %>% 
+  varImp(model) %>% as.data.frame() %>% top_n(n = 6) %>% 
     ggplot(aes(x = reorder(rownames(.), desc(Overall)), y = Overall)) +
     geom_col(aes(fill = Overall)) +
     theme(panel.background = element_blank(),
@@ -150,7 +150,8 @@ initial_cleaning<- function(dataset){
   dataset<-dataset %>% 
     dplyr::select(-INDEX) %>% 
     #converting the currency based columns to numeric
-    mutate_at(vars(c("INCOME","HOME_VAL","OLDCLAIM","BLUEBOOK")),~as.numeric(str_replace_all(.,c("\\$"="","\\,"="")))) 
+    mutate_at(vars(c("INCOME","HOME_VAL","OLDCLAIM","BLUEBOOK")),~as.numeric(str_replace_all(.,c("\\$"="","\\,"="")))) %>% 
+    mutate_at(vars("TARGET_FLAG"),as.factor)
   
   return(dataset)
 }
@@ -316,7 +317,7 @@ All the predictor variables have a low enough percentage of missing values that 
 
 ### Missing Values
 
-Missing values will be imputed with the step_impute functions in the tidy models recipes.
+Missing values will be imputed with the preprocess function in the caret package
 
 ```{r, echo = TRUE}
 imputation <- preProcess(df, method = "knnImpute")
@@ -346,15 +347,15 @@ Finally, as mentioned earlier in our data exploration, and our findings from our
 transformative_cleaning<-function(DF, TEMP){
   return(
     #transforming dataset with boxcox
-    DF %>% mutate_at(c("AGE","BLUEBOOK","CAR_AGE","HOME_VAL","INCOME","TIF","TRAVTIME"), 
+    DF %>% mutate_at(c("BLUEBOOK","CAR_AGE","HOME_VAL","INCOME","TIF","TRAVTIME"), 
                      function(x) BoxCox(x, BoxCox.lambda(x))) %>% 
       #transforming with log
-      mutate_at(c("TARGET_AMT","OLDCLAIM"),log) %>% 
+      mutate_at(c("TARGET_AMT","OLDCLAIM"),function(x) if_else(x==0,0,log(x))) %>% 
       #removing all infinite values generated from transformations
       mutate_if(is.numeric, list(~na_if(., Inf))) %>% 
       mutate_if(is.numeric, list(~na_if(., -Inf))) %>% 
-      rename("AGE_transform" = "AGE", "BLUEBOOK_transform" = "BLUEBOOK", "CAR_AGE_transform" = "CAR_AGE", "HOME_VAL_transform" = "HOME_VAL", "INCOME_transform" = "INCOME", "TIF_transform" = "TIF", "TRAVTIME_transform" = "TRAVTIME", "TARGET_AMT_transform" = "TARGET_AMT", "OLDCLAIM_transform" = "OLDCLAIM") %>% 
-      merge(TEMP, DF, by.x = 0, by.y = 0)
+      rename("BLUEBOOK_transform" = "BLUEBOOK", "CAR_AGE_transform" = "CAR_AGE", "HOME_VAL_transform" = "HOME_VAL", "INCOME_transform" = "INCOME", "TIF_transform" = "TIF", "TRAVTIME_transform" = "TRAVTIME", "TARGET_AMT_transform" = "TARGET_AMT", "OLDCLAIM_transform" = "OLDCLAIM") 
+      #merge(TEMP, DF, by.x = 0, by.y = 0)
   )
 }
 ```
@@ -362,7 +363,7 @@ transformative_cleaning<-function(DF, TEMP){
 
 
 ```{r, fig.width = 10, fig.height = 8, echo=FALSE}
-df_temp <- df %>% select("AGE", "BLUEBOOK", "CAR_AGE", "HOME_VAL", "INCOME", "TIF", "TRAVTIME", "TARGET_AMT", "OLDCLAIM")
+df_temp <- df %>% select("BLUEBOOK", "CAR_AGE", "HOME_VAL", "INCOME", "TIF", "TRAVTIME", "TARGET_AMT", "OLDCLAIM")
 # Build clean dataframe with transformation
 clean_df <- transformative_cleaning(df, df_temp)
 clean_df <- clean_df[ , order(names(clean_df))]
@@ -383,33 +384,330 @@ As we can see from above, our transformations helped to alleviate some of the ku
 
 #### Linear Regression Model 1
 
-**First linear regression model, no transformations, all nominal predictors included**
+**First linear regression model, no transformations, all numeric predictors included**
 ```{r}
 #75% data test training split
 set.seed(1)
-df_split<- initial_split(clean_df,.75)
+df_split<-initial_split(clean_df,.75)
 df_train<-training(df_split)
 df_test<-testing(df_split)
+
+#tidy models spec
+lm_spec<-linear_reg() %>%
+  set_engine(engine = "lm")
 ```
 
 ```{r}
 # Model 1 - Includes all nominal predictors and no transformations
+m1train<-merge(df_temp, df_train, by.x = 0, by.y = 0)
+m1test<-merge(df_temp, df_test, by.x = 0, by.y = 0)
+model1 <- lm_spec %>%  fit(TARGET_AMT ~ AGE + BLUEBOOK + CAR_AGE + CLM_FREQ + HOME_VAL + HOMEKIDS + INCOME + KIDSDRIV + MVR_PTS + OLDCLAIM + TIF + TRAVTIME + YOJ + CAR_TYPE + CAR_USE + EDUCATION + JOB + MSTATUS + PARENT1 + RED_CAR + REVOKED + SEX + URBANICITY,data = m1train)
+(mod1_sum <- summary(model1$fit))
 
-model1 <- lm(TARGET_AMT ~ AGE + BLUEBOOK + CAR_AGE + CLM_FREQ + HOME_VAL + HOMEKIDS + INCOME + KIDSDRIV + MVR_PTS + OLDCLAIM + TIF + TRAVTIME + YOJ + CAR_TYPE + CAR_USE + EDUCATION + JOB + MSTATUS + PARENT1 + RED_CAR + REVOKED + SEX + URBANICITY, df_train)
-(mod1_sum <- summary(model1))
-confint(mod1_sum)
 residPlot(mod1_sum)
+
+
+linearM_results<- model1 %>%
+  predict(new_data = m1train) %>% 
+  mutate(
+    truth = m1train$TARGET_AMT,
+    model = "LinearModel1",
+    set = "Training Set"
+  ) %>% 
+  bind_rows(model1 %>%
+  predict(new_data = m1test) %>%
+  mutate(
+    truth = m1test$TARGET_AMT,
+    model = "LinearModel1",
+    set = "Testing Set"))
+
+
 ```
 
 #### Linear Regression Model 2
 
 ```{r}
-# Build model 2 - this is Model 1 with only significant features (using stepAIC)
-# model2 <- stepAIC(model1, direction = "both",
-#                          scope = list(upper = model1, lower = ~ 1),
-#                          scale = 0, trace = FALSE)
-# # Display Model 2 Summary
-# (mod2_sum <- summary(model2))
+#recipe that removes all non numeric variables
+model2recipe<- 
+  df_train %>% recipe(TARGET_AMT_transform~.) %>% 
+  #remove all non numeric based variables
+  step_rm(all_nominal()) %>% 
+  prep()
+
+#apply recipe to both train and test sets
+m2train<-bake(model2recipe, new_data =  df_train)
+m2test<-bake(model2recipe,new_data= df_test)
+
+#fit model with tidymodels syntax
+model2<-lm_spec %>% 
+  fit(TARGET_AMT_transform ~ .,data = m2train)
+(mod2_sum <- summary(model2$fit))
+confint(mod2_sum)
+residPlot(mod2_sum)
+
+#push results into table to be called later
+linearM_results<- bind_rows(
+  linearM_results,
+  model2 %>%
+  predict(new_data = m2train) %>% 
+  mutate(
+    truth = m2train$TARGET_AMT_transform,
+    model = "LinearModel2",
+    set = "Training Set"
+  ),model2 %>% 
+  predict(new_data = m2test) %>%
+  mutate(
+    truth = m2test$TARGET_AMT_transform,
+    model = "LinearModel2",
+    set = "Testing Set"))
+
 
 ```
+
+#### Linear Regression Model 3
+
+
+```{r}
+#building model by removing 4 least significant numeric variables from predicting
+model3recipe<- 
+  df_train %>% recipe(TARGET_AMT_transform~.) %>% 
+  #remove all non numeric based variables
+  step_rm(all_nominal()) %>%
+  step_rm(c(AGE,YOJ,CLM_FREQ,INCOME_transform)) %>% 
+  #removing any heavily correlated predictor variables
+  step_corr(all_predictors()) %>% 
+  #removing any variables with low variance relative to response variable
+  step_nzv(all_predictors()) %>% 
+  prep()
+
+#apply recipe to both train and test sets
+m3train<-bake(model3recipe, new_data =  df_train)
+m3test<-bake(model3recipe,new_data= df_test)
+
+model3<-lm_spec %>% 
+  fit(TARGET_AMT_transform ~ .,data = m3train)
+(mod3_sum <- summary(model3$fit))
+residPlot(mod3_sum)
+
+
+linearM_results<- bind_rows(
+  linearM_results,
+  model3 %>%
+  predict(new_data = m3train) %>% 
+  mutate(
+    truth = m3train$TARGET_AMT_transform,
+    model = "LinearModel3",
+    set = "Training Set"
+  ),model3 %>% 
+  predict(new_data = m3test) %>%
+  mutate(
+    truth = m3test$TARGET_AMT_transform,
+    model = "LinearModel3",
+    set = "Testing Set"))  
+  
+
+linVP1 <-variableImportancePlot(model1$fit, "Linear Model 1")
+linVP2 <-variableImportancePlot(model2$fit, "Linear Model 2")
+linVP3 <-variableImportancePlot(model3$fit, "Linear Model 3")
+```
+
+### Logistic Regression Model
+
+#### Logistic Regression Model 1
+
+
+```{r}
+
+logit_spec<-logistic_reg() %>% 
+  set_engine("glm") %>% 
+  set_mode("classification")
+
+model1 <- logit_spec %>%  fit(TARGET_FLAG ~ BLUEBOOK + CAR_AGE + HOME_VAL + INCOME + PARENT1 + HOME_VAL + MSTATUS + SEX + EDUCATION + JOB + TRAVTIME + CAR_USE + KIDSDRIV + AGE + HOMEKIDS + YOJ + CAR_TYPE + RED_CAR + OLDCLAIM + CLM_FREQ + REVOKED + MVR_PTS + CAR_AGE + URBANICITY,data = m1train)
+(mod1_sum <- summary(model1$fit))
+
+logisticM_results<-
+bind_rows(
+predict(model1, new_data = m1train) %>% 
+  mutate(
+    truth = m1train$TARGET_FLAG,
+    model = "LogisticModel1",
+    set = "Training Set"
+  ),
+predict(model1, new_data = m1test)  %>% 
+  mutate(
+    truth = m1test$TARGET_FLAG,
+    model = "LogisticModel1",
+    set = "Testing Set"
+  )
+)
+
+
+
+```
+#### Logistic Regression Model 2
+```{r}
+
+model2recipe<- 
+  df_train %>% recipe(TARGET_FLAG~.) %>%
+  #removing all target_AMT to prevent knowing answer to models
+  step_rm(TARGET_AMT_transform) %>% 
+  #remove all non numeric based variables
+  step_modeimpute(all_nominal()) %>%
+  step_medianimpute(all_numeric()) %>% 
+  step_nzv(all_predictors()) %>% 
+  step_corr(all_numeric()) %>% 
+  #the following cut steps bin the data into groups of 4 or 5 for the specified variable in each step
+  step_cut(AGE,breaks = seq(min(df_train$AGE,na.rm = T),max(df_train$AGE,na.rm = T),max(df_train$AGE,na.rm = T)/4)) %>%
+  step_cut(BLUEBOOK_transform,breaks = seq(min(df_train$BLUEBOOK_transform,na.rm = T),max(df_train$BLUEBOOK_transform,na.rm = T),max(df_train$BLUEBOOK_transform,na.rm = T)/5)) %>%
+  step_cut(CAR_AGE_transform,breaks = seq(min(df_train$CAR_AGE_transform,na.rm = T),max(df_train$CAR_AGE_transform,na.rm = T),max(df_train$CAR_AGE_transform,na.rm = T)/4)) %>%
+  step_cut(TRAVTIME_transform,breaks = seq(min(df_train$TRAVTIME_transform,na.rm = T),max(df_train$TRAVTIME_transform,na.rm = T),max(df_train$TRAVTIME_transform,na.rm = T)/5)) 
+
+#apply recipe to both train and test sets
+m2train<-bake(model2recipe %>% prep(), new_data =  df_train)
+m2test<-bake(model2recipe %>% prep(),new_data= df_test)
+
+model2 <- logit_spec %>%  fit(TARGET_FLAG ~ .,data = m2train)
+(mod3_sum <- summary(model3$fit))
+
+logisticM_results<-
+bind_rows(logisticM_results,
+predict(model2, new_data = m2train) %>% 
+  mutate(
+    truth = m2train$TARGET_FLAG,
+    model = "LogisticModel2",
+    set = "Training Set"
+  ),
+predict(model2, new_data = m2test)  %>% 
+  mutate(
+    truth = m2test$TARGET_FLAG,
+    model = "LogisticModel2",
+    set = "Testing Set"
+  )
+)
+
+
+
+```
+#### Logistic Regression Model 3
+
+```{r}
+
+model3recipe<- 
+ model2recipe %>% 
+  step_downsample(TARGET_FLAG)
+
+
+#apply recipe to both train and test sets
+m3train<-juice(model3recipe %>% prep())
+prop.table(table(m3train$TARGET_FLAG))
+
+m3test<-bake(model3recipe %>% prep(),new_data= df_test)
+
+model3 <- logit_spec %>%  fit(TARGET_FLAG ~ .,data = m3train) 
+(mod3_sum <- summary(model3$fit))
+model3$fit$fitted.values %>% View
+logisticM_results<-
+bind_rows(logisticM_results,
+predict(model3, new_data = m3train) %>% 
+  mutate(
+    truth = m3train$TARGET_FLAG,
+    model = "LogisticModel3",
+    set = "Training Set"
+  ),
+predict(model3, new_data = m3test)  %>% 
+  mutate(
+    truth = m3test$TARGET_FLAG,
+    model = "LogisticModel3",
+    set = "Testing Set"
+  )
+)
+
+
+logVP1 <-variableImportancePlot(model1$fit, "Logistic Model 1")
+logVP2 <-variableImportancePlot(model2$fit, "Logistic Model 2")
+logVP3 <-variableImportancePlot(model3$fit, "Logistic Model 3")
+```
+
+
+
+
+
+### Model Performance Summary
+
+
+```{r}
+
+
+linearM_results %>% 
+  ggplot(aes(x = truth,y = .pred))+
+  geom_point(pch =21, alpha = 0.3, fill = "skyblue") +
+  geom_smooth(method = "lm", color = "red3") +
+  facet_wrap(set~model, scales = 'free')+
+stat_poly_eq(aes(label = paste(..adj.rr.label.., sep = "~~~")), 
+                   label.x.npc = "left", label.y.npc = .9,
+                   formula = y~x, parse = TRUE, size = 3.5)+
+  theme(panel.background = element_blank(),
+        panel.grid = element_blank())
+
+#getting linear results for training dataset
+linearM_results %>% filter(set == "Training Set") %>% 
+  group_by(model,set) %>% 
+metrics(truth = truth, estimate = .pred) %>% 
+  select(-c('.estimator')) %>% 
+  pivot_wider(names_from = '.metric',values_from = '.estimate') %>% 
+#pushing to kable style table
+  kable() %>% 
+  kable_styling(
+    bootstrap_options = c("hover", "condensed", "responsive"),
+    full_width = F)
+
+#getting linear results for testing dataset
+linearM_results %>% filter(set == "Testing Set") %>% 
+  group_by(model,set) %>% 
+metrics(truth = truth, estimate = .pred) %>% 
+  select(-c('.estimator')) %>% 
+  pivot_wider(names_from = '.metric',values_from = '.estimate') %>% 
+  #pushing to kable style table
+  kable() %>% 
+  kable_styling(
+    bootstrap_options = c("hover", "condensed", "responsive"),
+    full_width = F)
+
+
+
+logisticM_results %>% filter(set == "Training Set") %>% 
+  group_by(model,set) %>% 
+metrics(truth = truth, estimate = .pred_class) %>% 
+  select(-c('.estimator')) %>% 
+  pivot_wider(names_from = '.metric',values_from = '.estimate')%>% 
+  #pushing to kable style table
+  kable() %>% 
+  kable_styling(
+    bootstrap_options = c("hover", "condensed", "responsive"),
+    full_width = F)
+
+logisticM_results %>% filter(set == "Testing Set") %>% 
+  group_by(model,set) %>% 
+metrics(truth = truth, estimate = .pred_class) %>% 
+  select(-c('.estimator')) %>% 
+  pivot_wider(names_from = '.metric',values_from = '.estimate')%>% 
+  #pushing to kable style table
+  kable() %>% 
+  kable_styling(
+    bootstrap_options = c("hover", "condensed", "responsive"),
+    full_width = F)
+```
+
+
+
+
+The final thing we will take a look at is our variable importance for each model
+
+```{r,fig.height=8, fig.width=8}
+
+grid.arrange(linVP1,linVP2,linVP3,logVP1,logVP2,logVP3,ncol = 3)
+
+```
+
+
 
