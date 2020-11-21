@@ -328,6 +328,11 @@ missing2 <- predict_imputer %>%
 kable(missing2 %>% 
   filter(pct_miss > 0)) %>%
   kable_styling(bootstrap_options = c("striped", "hover", "condensed"))
+
+table_names <- data.frame(col = names(imputation$mean), mean = imputation$mean, sd = imputation$std)
+for(i in table_names$col){
+  predict_imputer[i] <- predict_imputer[i]*imputation$std[i] + imputation$mean[i]
+}
 ```
 
 ### Outliers
@@ -363,9 +368,9 @@ transformative_cleaning<-function(DF, TEMP){
 
 
 ```{r, fig.width = 10, fig.height = 8, echo=FALSE}
-df_temp <- df %>% select("BLUEBOOK", "CAR_AGE", "HOME_VAL", "INCOME", "TIF", "TRAVTIME", "TARGET_AMT", "OLDCLAIM")
+df_temp <- predict_imputer %>% select("BLUEBOOK", "CAR_AGE", "HOME_VAL", "INCOME", "TIF", "TRAVTIME", "TARGET_AMT", "OLDCLAIM")
 # Build clean dataframe with transformation
-clean_df <- transformative_cleaning(df, df_temp)
+clean_df <- transformative_cleaning(predict_imputer, df_temp)
 clean_df <- clean_df[ , order(names(clean_df))]
 #View new distributions of nominal values
 DataExplorer::plot_histogram(
@@ -431,7 +436,7 @@ linearM_results<- model1 %>%
 model2recipe<- 
   df_train %>% recipe(TARGET_AMT_transform~.) %>% 
   #remove all non numeric based variables
-  step_rm(all_nominal()) %>% 
+  step_rm(TARGET_FLAG) %>% 
   prep()
 
 #apply recipe to both train and test sets
@@ -442,7 +447,6 @@ m2test<-bake(model2recipe,new_data= df_test)
 model2<-lm_spec %>% 
   fit(TARGET_AMT_transform ~ .,data = m2train)
 (mod2_sum <- summary(model2$fit))
-confint(mod2_sum)
 residPlot(mod2_sum)
 
 #push results into table to be called later
@@ -566,7 +570,7 @@ m2train<-bake(model2recipe %>% prep(), new_data =  df_train)
 m2test<-bake(model2recipe %>% prep(),new_data= df_test)
 
 model2 <- logit_spec %>%  fit(TARGET_FLAG ~ .,data = m2train)
-(mod3_sum <- summary(model3$fit))
+(mod2_sum <- summary(model2$fit))
 
 logisticM_results<-
 bind_rows(logisticM_results,
@@ -627,7 +631,54 @@ logVP2 <-variableImportancePlot(model2$fit, "Logistic Model 2")
 logVP3 <-variableImportancePlot(model3$fit, "Logistic Model 3")
 ```
 
+#### Using Logistic Results to improve Linear Regression
 
+```{r}
+#building model by removing 4 least significant numeric variables from predicting
+
+df_train['preds'] <- logisticM_results %>% filter(model == 'LogisticModel2') %>% filter(set == 'Training Set') %>% select(.pred_class)
+df_test['preds'] <- logisticM_results %>% filter(model == 'LogisticModel2') %>% filter(set == 'Testing Set') %>% select(.pred_class)
+
+df_train['preds'] <- df_train['preds'] %>% sapply(as.numeric)
+df_test['preds'] <- df_test['preds'] %>% sapply(as.numeric)
+
+
+model4recipe<- 
+  df_train %>% recipe(TARGET_AMT_transform~.) %>% 
+  #removing any heavily correlated predictor variables
+  step_rm(TARGET_FLAG) %>% 
+  recipes::step_corr(recipes::all_numeric()) %>% 
+  #removing any variables with low variance relative to response variable
+  recipes::step_nzv(recipes::all_numeric()) %>% 
+  prep()
+
+#apply recipe to both train and test sets
+m4train<-bake(model4recipe, new_data =  df_train)
+m4test<-bake(model4recipe,new_data= df_test)
+
+model4<-lm_spec %>% 
+  parsnip::fit(TARGET_AMT_transform ~ .,data = m4train)
+(mod4_sum <- summary(model4$fit))
+residPlot(mod4_sum)
+
+linearM_results<- bind_rows(
+  linearM_results,
+  model4 %>%
+  predict(new_data = m4train) %>% 
+  mutate(
+    truth = m4train$TARGET_AMT_transform,
+    model = "LinearModel4",
+    set = "Training Set"
+  ),model4 %>% 
+  predict(new_data = m4test) %>%
+  mutate(
+    truth = m4test$TARGET_AMT_transform,
+    model = "LinearModel4",
+    set = "Testing Set"))  
+  
+
+linVP4 <-variableImportancePlot(model4$fit, "Linear Model 4")
+```
 
 
 
@@ -644,7 +695,7 @@ linearM_results %>%
   facet_wrap(set~model, scales = 'free')+
 stat_poly_eq(aes(label = paste(..adj.rr.label.., sep = "~~~")), 
                    label.x.npc = "left", label.y.npc = .9,
-                   formula = y~x, parse = TRUE, size = 3.5)+
+                   formula = y~x, parse = TRUE, size = 2)+
   theme(panel.background = element_blank(),
         panel.grid = element_blank())
 
@@ -704,7 +755,7 @@ The final thing we will take a look at is our variable importance for each model
 
 ```{r,fig.height=8, fig.width=8}
 
-grid.arrange(linVP1,linVP2,linVP3,logVP1,logVP2,logVP3,ncol = 3)
+grid.arrange(linVP1,linVP2,linVP3,logVP1,logVP2,logVP3,linVP4,ncol = 3)
 
 ```
 
