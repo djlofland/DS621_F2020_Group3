@@ -4,14 +4,14 @@ subtitle: 'Auto Insurance Regression'
 author: 'Zach Alexander, Sam Bellows, Donny Lofland, Joshua Registe, Neil Shah, Aaron Zalki'
 data: '11/20/2020'
 output:
+  pdf_document:
+    extra_dependencies: ["geometry", "multicol", "multirow", "xcolor"]
   html_document:  
     theme: cerulean
     highlight: pygments
     css: https://raw.githubusercontent.com/djlofland/DS621_F2020_Group3/master/Homework_4/lab.css
     toc: true
     toc_float: true
-  pdf_document:
-    extra_dependencies: ["geometry", "multicol", "multirow", "xcolor"]
 ---
 
 Source code: [https://github.com/djlofland/DS621_F2020_Group3/tree/master/Homework_4](https://github.com/djlofland/DS621_F2020_Group3/tree/master/Homework_4)
