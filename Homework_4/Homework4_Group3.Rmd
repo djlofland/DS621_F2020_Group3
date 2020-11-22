@@ -389,6 +389,11 @@ As we can see from above, our transformations helped to alleviate some of the ku
 
 #### Linear Regression Model 1
 
+The first model built was based on the entire dataset. The linear models will be attempting to predict the feature "TARGET_AMT" using the existing features within the dataset except for "TARGET_FLAG". these features are to be considered unknown. 
+
+
+First, we decided to split our cleaned dataset into a training and testing set (75% training, 25% testing). This was necessary as the provided holdout evaluation dataset doesn’t provide target values so we cannot measure our model performance against that dataset. This split was used on all models
+
 **First linear regression model, no transformations, all numeric predictors included**
 ```{r}
 #75% data test training split
@@ -429,7 +434,15 @@ linearM_results<- model1 %>%
 
 ```
 
+Results of the first model show that using all non-transformed data doesnt fully satisfy the assumptions for a linear regression model. We can also see that are several predictors that show insignificant correlations but before we discount any features, we will use the transformed the data to satisfy the conditions of linear regression. Our R2 was 0.06 and our error was 4675 which is indicative of a very poor model.
+
 #### Linear Regression Model 2
+
+
+The second model built was based on the entire dataset as well but various features were transformed as discussed in the Data Preparation section of this assignment. with our transformed variables via boxcox and linear transformations, linear regression was applied to the remaining data to assess predictability of our response variable.
+
+
+
 
 ```{r}
 #recipe that removes all non numeric variables
@@ -468,7 +481,11 @@ linearM_results<- bind_rows(
 
 ```
 
+Results of this model show that we satisfy the requirements of linear regression with residuals scattered around 0 and a normal-like Q-Q plot. There are still several non-significant variables such as OLDCLAIM, SEXz_F, YOJ, JOBDoctor, JOBLawyer, JOBStudent CAR_TYPE. our r2 for this model is 0.22 with a standard error of 3.2, better than model 1.
+
 #### Linear Regression Model 3
+
+This third model builds upon attempts to perform a linear regression by removing select features that are insignificant to the model created in model 2. in addition to feature selection, using the tidymodels framework, we removed any features that are highly correlated with each other as well as any zero-variance features. Only numeric features were considered in this model.
 
 
 ```{r}
@@ -514,9 +531,15 @@ linVP2 <-variableImportancePlot(model2$fit, "Linear Model 2")
 linVP3 <-variableImportancePlot(model3$fit, "Linear Model 3")
 ```
 
+This model did not perform as well linear model 2. This is likely due to the omission of features that were not numeric. The R2 for this model was .12 with a rmse of 3.43
+
 ### Logistic Regression Model
 
 #### Logistic Regression Model 1
+
+The next set of models built are logistic regression models. these predict the outcome of non-numeric variables. this is done by assessing the probability that that a particular class will occur. In this case, we are doing a binary classification of the feature "TARGET_FLAG" where the outcome is 0 or 1. 
+
+Similar to the linear regression models, the first model built was based on the entire dataset. The logistic models will be attempting to predict the feature "TARGET_FLAG" using the existing features within the dataset except for "TARGET_AMT". These features are to be considered unknown. 
 
 
 ```{r}
@@ -545,9 +568,14 @@ predict(model1, new_data = m1test)  %>%
 )
 
 
-
 ```
+
+The results of the first Logistic regression model on the untransformed data shows an AIC of 5486 with several insignificant predictors. we can use this information on the P-values to assess which features can be removed from the model
+
 #### Logistic Regression Model 2
+
+In the the second logistic regression model, we remove variables will low variance, as well as variables that may exhibit any colinearity. Additionally, 4 numeric features from our training set were binned into groups and used as predictors in lieu of numeric based predictors. The plot below shows the 4 features that were chosen to be binned within the analysis.
+
 ```{r}
 
 model2recipe<- 
@@ -568,6 +596,17 @@ model2recipe<-
 #apply recipe to both train and test sets
 m2train<-bake(model2recipe %>% prep(), new_data =  df_train)
 m2test<-bake(model2recipe %>% prep(),new_data= df_test)
+
+m2train %>%
+  select(c(AGE,BLUEBOOK_transform,CAR_AGE_transform,TRAVTIME_transform)) %>% 
+  pivot_longer(cols=c(tidyselect::everything()),names_to = "Feature",values_to="Value") %>% 
+  ggplot(aes(x = Value)) +
+  geom_histogram(stat = 'count')+
+  facet_wrap(~Feature, scales = 'free')+
+  theme(panel.background = element_blank(),
+        panel.border = element_rect(color = 'black', fill = NA),
+        axis.text.x = element_text(angle = 90))+
+  labs(title = "Binned Features for Logistic Model")
 
 model2 <- logit_spec %>%  fit(TARGET_FLAG ~ .,data = m2train)
 (mod2_sum <- summary(model2$fit))
@@ -591,7 +630,16 @@ predict(model2, new_data = m2test)  %>%
 
 
 ```
+With this the logistic model was run and the results show and AIC 5486. lower than the first model and implies that this is better at predicting the classification for TARGET_FLAG. 
+
 #### Logistic Regression Model 3
+
+One of the measures to consider when running classification models is the distribution of the binary classification. In this case, the dataset innately has a biased classification, at 0.73% of values showing 0, and 27% of values showing 1.
+
+```{r}
+prop.table(table(df$TARGET_FLAG))
+```
+Because of this class imbalance, if we were to simply guess that all values are 0, that would technically lead to a 73% accurate model. To account for this, we will downsample the majority class in the final logistic model. This downsampling will allow the distribution of the training set to be 50/50. the testing dataset will remain as is.
 
 ```{r}
 
@@ -631,8 +679,12 @@ logVP2 <-variableImportancePlot(model2$fit, "Logistic Model 2")
 logVP3 <-variableImportancePlot(model3$fit, "Logistic Model 3")
 ```
 
+With this we end up with a model that has an AIC score of 3350, significantly less than that of the first two logistic models and thus we can say that this model has performed better. additional metrics on each model is presented in the Model Performance Summary at the end of this document. 
+
+
 #### Using Logistic Results to improve Linear Regression
 
+Finally, to tune the linear regression model, we added the predictions of made from our logistic model to obtain the feature TARGET_FLAG, with this, an additional predictor feature was added to the model and could be used. 
 ```{r}
 #building model by removing 4 least significant numeric variables from predicting
 
@@ -680,11 +732,11 @@ linearM_results<- bind_rows(
 linVP4 <-variableImportancePlot(model4$fit, "Linear Model 4")
 ```
 
-
+After using the results of the optimal logistic regression model to predict TARGET_FLAG and passing that into a linear regression, the R2 for the model has bumped up to 0.2476 with a standard error of 3.186. 
 
 ### Model Performance Summary
 
-
+Finally, we can view the results of each of the linear regression models. the results for both the training and testing dataset s are plotted below. there are many datapoints where TARGET_FLAG is 0 and thus leads to regression plots that may be weighted accordingly. Omitting points with 0 does not improve the model.
 ```{r}
 
 
@@ -699,6 +751,11 @@ stat_poly_eq(aes(label = paste(..adj.rr.label.., sep = "~~~")),
   theme(panel.background = element_blank(),
         panel.grid = element_blank())
 
+```
+
+The results for both the training and testing datasets on each of the models is presented below. The linear model that performed the best on this dataset to predict our response variable TARGET_AMT is linear model 4. this model uses all predictor variables with transformations done to normalize numeric variables that did not follow gaussian distributions. Additionally, the predictor variable TARGET_FLAG was included in this analysis via prediction from the logistic regression model. Although this model may be the best of the four, it may not be sufficient in real life as the rsq implies that the model explains about 24% of the variance within the dataset. The results were consistent between the testing and the training datasets implying that no minimal overfitting/underfitting occured. 
+
+```{r}
 #getting linear results for training dataset
 linearM_results %>% filter(set == "Training Set") %>% 
   group_by(model,set) %>% 
@@ -724,7 +781,12 @@ metrics(truth = truth, estimate = .pred) %>%
     full_width = F)
 
 
+```
 
+
+Results of the logistic regression models are presented below for both the training and the testing datasets. The model that performed best using these classification models is logistic model 3. Although the accuracy of logistic model 1 and 2 are shown higher, the metric of importance here is the Kappa. The Kappa is a similar measure to accuracy however it is normalized by the accuracy that would be expected by chance alone which is useful with class imbalances presented in datasets. Due to the undersampling of the majority class for this model, the true accuracy (KAP), was best under model 3. the results of these models were consistent between both the testing and the training datasets implying minimal overfitting/underfitting and the ability for the model to generalize well.
+
+```{r}
 logisticM_results %>% filter(set == "Training Set") %>% 
   group_by(model,set) %>% 
 metrics(truth = truth, estimate = .pred_class) %>% 
@@ -749,11 +811,10 @@ metrics(truth = truth, estimate = .pred_class) %>%
 ```
 
 
-
-
 The final thing we will take a look at is our variable importance for each model
+The final figure presented below shows the feature importance in each model. Note that not all features are presented from the models, but only the top 6 from each. Amongst all the models with the exception of linear model 3 (which did not consider ordinal features), being in an urban city that was highly rural was best predictor of when someone was in a car crash and if they would file claims against their insurance accordingly. Motor vehicle points was also a consistent feature that shows that people who have a history of violations tend to be more likely to get into a car accident. This is consistent with how car insurance plans are priced with high premiums being charged in urban areas like NYC relative to the suburbs. 
 
-```{r,fig.height=8, fig.width=8}
+```{r,fig.height=10, fig.width=8}
 
 grid.arrange(linVP1,linVP2,linVP3,logVP1,logVP2,logVP3,linVP4,ncol = 3)
 
