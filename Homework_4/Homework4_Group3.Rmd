@@ -158,11 +158,16 @@ initial_cleaning<- function(dataset){
 ```
 
 
+## 0. Introduction
+
+Group 3 created a multiple linear regression and binary logistic model to estimate the probability of a driver having an auto accident, and the monetary damanage, for the customer Khansari Auto Insurance. As autoinsurance and insurance in general, stems off the pooling of individuals to mitigate risk, it's important to be able to predict accident rates to ensure funds are available for disbursement. 
+
 
 ## 1. Data Exploration
 
-*Describe the size and the variables in the insurance training data set. Consider that too much detail will cause a manager to lose interest while too little detail will make the manager consider that you aren't doing your job. Some suggestions are given below. Please do NOT treat this as a checklist of things to do to complete the assignment.
-You should have your own thoughts on what to tell the boss. These are just ideas.*
+*Describe the size and the variables in the insurance training data set. Consider that too much detail will cause a manager to lose interest while too little detail will make the manager consider that you aren't doing your job. Some suggestions are given below. Please do NOT treat this as a checklist of things to do to complete the assignment.*
+
+*You should have your own thoughts on what to tell the boss. These are just ideas.*
 
 
 ```{r load_data, echo=FALSE}
@@ -382,7 +387,8 @@ As we can see from above, our transformations helped to alleviate some of the ku
 
 ## 3. Build Models
 
-*Using the training data, build at least two different multiple linear regression models and three different binary logistic models, using different variables (or the same variables with different transformations). You may select the variables manually, use an approach such as Forward or Stepwise, use a different approach, or use a combination of techniques. Describe the techniques you used. If you manually selected a variable for inclusion into the model or exclusion into the model, indicate why this was done.* 
+*Using the training data, build at least two different multiple linear regression models and three different binary logistic models, using different variables (or the same variables with different transformations). You may select the variables manually, use an approach such as Forward or Stepwise, use a different approach, or use a combination of techniques. Describe the techniques you used. If you manually selected a variable for inclusion into the model or exclusion into the model, indicate why this was done.*
+
 *Be sure to explain how you can make inferences from the model, as well as discuss other relevant model output. Discuss the coefficients in the models, do they make sense? Are you keeping the model even though it is counter-intuitive? Why? The boss needs to know.* 
 
 ### Linear Regression
@@ -440,7 +446,6 @@ Results of the first model show that using all non-transformed data doesnt fully
 
 
 The second model built was based on the entire dataset as well but various features were transformed as discussed in the Data Preparation section of this assignment. with our transformed variables via boxcox and linear transformations, linear regression was applied to the remaining data to assess predictability of our response variable.
-
 
 
 
@@ -812,6 +817,7 @@ metrics(truth = truth, estimate = .pred_class) %>%
 
 
 The final thing we will take a look at is our variable importance for each model
+
 The final figure presented below shows the feature importance in each model. Note that not all features are presented from the models, but only the top 6 from each. Amongst all the models with the exception of linear model 3 (which did not consider ordinal features), being in an urban city that was highly rural was best predictor of when someone was in a car crash and if they would file claims against their insurance accordingly. Motor vehicle points was also a consistent feature that shows that people who have a history of violations tend to be more likely to get into a car accident. This is consistent with how car insurance plans are priced with high premiums being charged in urban areas like NYC relative to the suburbs. 
 
 ```{r,fig.height=10, fig.width=8}
