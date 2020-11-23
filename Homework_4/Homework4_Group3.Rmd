@@ -51,8 +51,10 @@ library(tidymodels)
 library(ggpmisc)
 library(regclass)
 library(pROC)
+library(skimr)
 library(naniar)
 library(RANN)
+library(kableExtra)
 #' Print a side-by-side Histogram and QQPlot of Residuals
 #'
 #' @param model A model
@@ -158,9 +160,9 @@ initial_cleaning<- function(dataset){
 ```
 
 
-## 0. Introduction
+## Introduction
 
-Group 3 created a multiple linear regression and binary logistic model to estimate the probability of a driver having an auto accident, and the monetary damage, for the customer Khansari Auto Insurance. As autoinsurance and insurance in general stems off the pooling of individuals to mitigate risk, it's important to be able to predict accident rates to ensure funds are available for disbursement. 
+Group 3 created a multiple linear regression and binary logistic model to estimate the probability of a driver having an auto accident, and the monetary damage, for the customer Khansari Auto Insurance. As auto insurance and insurance in general stem off the pooling of individuals to mitigate risk, it's important to be able to predict accident rates to ensure funds are available for disbursement. 
 
 
 ## 1. Data Exploration
@@ -187,20 +189,20 @@ df_eval <- initial_cleaning(df_eval)
 
 Now, with initial cleaning complete, we can take a quick look at the dimensions of both the training and evaluation datasets:
 
-**Dimensions of training dataset**
+**Dimensions of the training dataset:**
 
 ```{r, echo=FALSE}
 dim(df)
 ```
 
-**Dimensions of evaluation dataset**
+**Dimensions of evaluation dataset:**
 
 ```{r, echo=FALSE}
 dim(df_eval)
 ```
 It looks like we have 8,161 cases and 25 variables in the training dataset and 2,141 cases and 25 variables in the evaluation dataset.
 
-We can also provide a summary of each variable and it's theoretical effect it'll have on our models:
+We can also provide a summary of each variable and the theoretical effect it'll have on our models:
 
 ![Variables of Interest](./images/features-explain.jpg)
 
@@ -211,24 +213,27 @@ Next, we compiled summary statistics on our data set to better understand the da
 
 ```{r columns, echo=FALSE}
 # Display summary statistics
-summary(df)
+skim(df)     # Use this when knitting to HTML
+# summary(df)  # Use this when knitting to PDF
 ```
 
 ### Check Class Bias
 
-Next, we wanted to get an idea of the distribution profiles for each of the variables. We have two target values, 0 and 1. When building models, we ideally want an equal representation of both classes. As class imbalance deviates, our model performance will suffer both from effects of differential variance between the classes and bias towards picking the more represented class. For logistic regression, if we see a strong imbalance, we can 1) up-sample the smaller group, down-sample the larger group, or adjust our threshold for assigning the predicted value away from 0.5.
+Next, we need to understand the distribution profiles for each of the variables. We have two target values, 0 and 1. When building models, we ideally want an equal representation of both classes. As class imbalance increases, favoring one class, our model performance will suffer both from the effects of differential variance between the classes and bias towards the more represented class. For logistic regression, to address a strong class imbalance, some approaches we can try include:
+
+1. up-sample the smaller group,
+2. down-sample the larger group, or 
+3. adjust our threshold for assigning the predicted value away from 0.5.
 
 ```{r, echo=FALSE}
 prop.table(table(df$TARGET_FLAG)) %>% kable() %>% 
     kable_styling(
-      full_width = F) %>% 
+      full_width = F, position="center") %>% 
     add_header_above(header = c("Classification of Target Flag"=2))
 ```
 
 
-The classes are not perfectly balanced, with approximately 73.6% 0’s and 26.4% 1’s. With unbalanced class distributions, it is often necessary to artificially balance the classes to achieve good results. Up-sampling or Down-sampling may be required to achieve class balance with this dataset. We will evaluate model performance accordingly.
-
-
+The classes are not well balanced, with approximately 73.6% 0’s and 26.4% 1’s. Given the unbalanced class distributions, upsampling or downsampling may be required to achieve class balance with this dataset. We will evaluate model performance accordingly.
 
 ### Distributions
 
@@ -239,8 +244,6 @@ DataExplorer::plot_bar(
          ggtheme=theme_bw())
 ```
 
-
-
 Next, we visualize the distribution profiles for each of the predictor variables. This will help us to make a plan on which variables to include, how they might be related to each other or the target, and finally identify outliers or transformations that might help improve model resolution.
 
 ```{r, fig.height = 10, fig.width = 10, echo=FALSE}
@@ -250,18 +253,15 @@ DataExplorer::plot_histogram(
          ggtheme=theme_bw())
 ```
 
-The distribution profiles show the prevalence of kurtosis, specifically right skew in variables `TRAVTIME`, `OLDCLAIM`, `MVR_PTS`, `TARGET_AMT`, `INCOME`, `BLUEBOOK`, and approximately normal distributions in `YOJ`, `CARAGE`, `HOME_VAL`, and `AGE`. When deviations are skewed from traditional normal distribution, this can be problematic for regression assumptions, and thus we might need to transform the data. Under logistic regression, we will need to dummy factor-based variables for the model to understand the data.
-
+The distribution profiles show the prevalence of kurtosis, specifically right skew in variables `TRAVTIME`, `OLDCLAIM`, `MVR_PTS`, `TARGET_AMT`, `INCOME`, `BLUEBOOK`, and approximately normal distributions in `YOJ`, `CARAGE`, `HOME_VAL`, and `AGE`. When deviations are skewed from a traditional normal distribution, this can be problematic for regression assumptions, and thus we might need to transform the data. Under logistic regression, we will need to dummy factor-based variables for the model to understand the data.
 
 While we don't tackle feature engineering in this analysis, if we were performing a more in-depth analysis, we could leverage the package, `mixtools` (see R Vignette).  This package helps regress *mixed models* where data can be subdivided into subgroups. 
 
 Lastly, several features have both a distribution along with a high number of values at an extreme. However, based on the feature meanings and provided information, there is no reason to believe that any of these extreme values are mistakes, data errors, or otherwise inexplicable. As such, we will not remove the extreme values, as they represent valuable data and could be predictive of the target.
 
-
 ### Boxplots
 
 In addition to creating histogram distributions, we also elected to use box-plots to get an idea of the spread of the response variable `TARGET_AMT` in relation to all of the non-numeric variables. Two sets of boxplots are shown below due to the wide distribution of the response variable. The first set of boxplots highlights the entire range and shows how the cost of car crashes peaks relative to the specific category. 
-
 
 ```{r, fig.height = 10, fig.width = 10, echo=FALSE}
 df_character_wide<-
@@ -279,18 +279,19 @@ The second set of box plots simply shows these same distributions "zoomed in" by
 
 ```{r, fig.height = 10, fig.width = 10, echo=FALSE}
 df_character_wide %>% 
-  ggplot(mapping = aes(x = value, y = TARGET_AMT))+
-  geom_boxplot()+facet_wrap(.~variable, scales="free")+
-  theme_bw()+
-  theme(axis.text.x = element_text(angle = 90))+
+  ggplot(mapping = aes(x = value, y = TARGET_AMT)) +
+  geom_boxplot() +
+  facet_wrap(.~variable, scales="free") +
+  theme_bw() +
+  theme(axis.text.x = element_text(angle = 90)) +
   coord_cartesian(ylim = c(NA,5000))
 ```
 
 ### Variable Plots
 
-We wanted to plot scatter plots of each variable versus the target variable to get an idea of the relationship between them. There are some notable trends as observed in the scatterplots below such as our response variable `TARGET_AMT` is likely to be lower when individuals have more kids at home as indicated by the `HOMEKIDS` feature, and when they have more teenagers driving the car indicated by the feature `KIDSDRIV`. 
+We generate scatter plots of each variable versus the target variable, `TARGET_AMT`, to get an idea of the relationship between them. We observe some notable trends in the scatterplots below such as our response variable `TARGET_AMT` is likely to be lower when individuals have more kids at home as indicated by the `HOMEKIDS` feature, and when they have more teenagers driving the car indicated by the feature `KIDSDRIV`. 
 
-Additionally a pairwise comparison plot between all features, both numeric and non-numeric is shown following the scatterplot where this initially implies that there aren't a significant amount of correlated features and this can give some insight into the expected significance and performing dimensionality reduction on the datasets for the models.
+Additionally, a pairwise comparison plot between all features, both numeric and non-numeric is shown following the scatterplot where this initially implies that there aren't a significant amount of correlated features and this can give some insight into the expected significance and performing dimensionality reduction on the datasets for the models.
 
 ```{r, fig.height = 10, fig.width = 10, echo=FALSE}
 DataExplorer::plot_scatterplot(
@@ -303,13 +304,15 @@ DataExplorer::plot_correlation(data = df,type = "all",cor_args = list("use" = "p
 
 ### Data Sparsity Check
 
-Finally, we can observe the sparsity of information within our dataset by using the `DataExplorer` package to assess missing information.
+Finally, we can observe the sparsity of information within our dataset by using the `DataExplorer` package to assess missing information and the `nanair` package to understand any patterns within the missing features.
 
 ```{r}
-DataExplorer::plot_missing(df,ggtheme = theme_bw())
+DataExplorer::plot_missing(df, ggtheme = theme_bw())
+
+gg_miss_upset(df)
 ```
 
-We can see that generally, our dataset is in good shape, however, some imputation may be needed for `INCOME`, `YOJ`, `HOME_VAL`, and `CAR_AGE`. 
+We can see that generally, our dataset is in good shape, however, some imputation may be needed for `INCOME`, `YOJ`, `HOME_VAL`, and `CAR_AGE`. Notice that there is also a correlation between these missing variables, when one is missing, we see many cases where a second (or more) are also missing.  This does imply that our `knnImpute` approach to missing values may not be as accurate.  That said, it's a low percentage, so probably won't have a meaningful impact on final model results.  Note that a `knnImpute` approach may also be skewed by class imbalances with features.  In a more rigorous analysis, we might consider testing a `median` imputing strategy and/or bootstrapping blocking strategies for better sampling to impute.
 
 ## 2. Data Preparation
 
@@ -319,71 +322,93 @@ To summarize our data preparation and exploration, we can distinguish our findin
 
 All the predictor variables have a low enough percentage of missing values that they can be imputed and still provide useful information to the model. As such, we chose to keep all the fields.
 
-
 ### Missing Values
 
-Missing values will be imputed with the preprocess function in the caret package
+Missing values will be imputed with the preprocess function in the caret package and the `knnImpute` method.
 
-```{r, echo = TRUE}
-imputation <- preProcess(df, method = "knnImpute")
+```{r echo=FALSE}
+imputation <- preProcess(df, method = c("knnImpute"))
+# summary(imputation)
+
 predict_imputer <- predict(imputation, df)
+
 #compare to above chart
 missing2 <- predict_imputer %>%
   miss_var_summary() 
-kable(missing2 %>% 
-  filter(pct_miss > 0)) %>%
-  kable_styling(bootstrap_options = c("striped", "hover", "condensed"))
 
+kable(missing2) %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed"), position="center")
+
+# Note that the preProcess method will automatcially scale and center our features.  If we do not want that, we need to back out those changes. 
 table_names <- data.frame(col = names(imputation$mean), mean = imputation$mean, sd = imputation$std)
+
 for(i in table_names$col){
   predict_imputer[i] <- predict_imputer[i]*imputation$std[i] + imputation$mean[i]
 }
 ```
 
+We see no missing values now.
+
+### Near Zero Variance
+
+We leverage `nearZeroVar` to identify any features with little variance.  Features with low or zero variance will have little impact on a model's resolution.  Similarly, a feature with low variance could lead to undue influence by exceptions and/or zero variance when data are split into training/testing sets or when using bootstrapping or resampling techniques.  These would be good candidates for removal. 
+
+```{r}
+nzv <- nearZeroVar(df, saveMetrics= TRUE)
+nzv %>% filter(nzv == TRUE) 
+```
+
+We see no candidates for removal.
+
 ### Outliers
 
-No outliers were removed as all values seemed reasonable. 
-
+No outliers were removed as all values seemed reasonable. We will rely on transformations to help address resolution issues introduced by extreme values.
 
 ### Transform non-normal variables
 
-Finally, as mentioned earlier in our data exploration, and our findings from our histogram plots, we can see that some of our variables are highly skewed. To address this, we decided to perform some transformations to make them more normally distributed. Here are some plots to demonstrate the changes in distributions before and after the transformations:  
+Finally, as mentioned earlier in our data exploration, and our findings from our histogram plots, we can see that some of our variables are highly skewed. To address skew, we perform transformations to make the distributions more normally distributed.  We apply BoxCox and log transformations.
+
+Here are some plots to demonstrate the changes in distributions after the transformations:  
 
 ```{r, echo=FALSE, fig.height=5, fig.width=8, message=FALSE, warning=FALSE}
 # boxcox done on bluebook, 
 # performed boxcox transformation after identifying proper lambda
 # 
 # Performed log on Target AMT, and old claim
-transformative_cleaning<-function(DF, TEMP){
+transformative_cleaning <- function(DF, TEMP) {
   return(
     #transforming dataset with boxcox
-    DF %>% mutate_at(c("BLUEBOOK","CAR_AGE","HOME_VAL","INCOME","TIF","TRAVTIME"), 
-                     function(x) BoxCox(x, BoxCox.lambda(x))) %>% 
-      #transforming with log
-      mutate_at(c("TARGET_AMT","OLDCLAIM"),function(x) if_else(x==0,0,log(x))) %>% 
+    DF %>% 
+      mutate_at(c("BLUEBOOK","CAR_AGE","HOME_VAL","INCOME","TIF","TRAVTIME"),
+                function(x) BoxCox(x, BoxCox.lambda(x))) %>% 
+      
+      # transforming with log
+      mutate_at(c("TARGET_AMT","OLDCLAIM"), function(x) if_else(x==0, 0, log(x))) %>% 
       #removing all infinite values generated from transformations
       mutate_if(is.numeric, list(~na_if(., Inf))) %>% 
       mutate_if(is.numeric, list(~na_if(., -Inf))) %>% 
+      
       rename("BLUEBOOK_transform" = "BLUEBOOK", "CAR_AGE_transform" = "CAR_AGE", "HOME_VAL_transform" = "HOME_VAL", "INCOME_transform" = "INCOME", "TIF_transform" = "TIF", "TRAVTIME_transform" = "TRAVTIME", "TARGET_AMT_transform" = "TARGET_AMT", "OLDCLAIM_transform" = "OLDCLAIM") 
       #merge(TEMP, DF, by.x = 0, by.y = 0)
   )
 }
 ```
 
-
-
-```{r, fig.width = 10, fig.height = 8, echo=FALSE}
+```{r echo=FALSE, fig.height=8, fig.width=10, message=FALSE, warning=FALSE}
 df_temp <- predict_imputer %>% select("BLUEBOOK", "CAR_AGE", "HOME_VAL", "INCOME", "TIF", "TRAVTIME", "TARGET_AMT", "OLDCLAIM")
+
 # Build clean dataframe with transformation
 clean_df <- transformative_cleaning(predict_imputer, df_temp)
 clean_df <- clean_df[ , order(names(clean_df))]
-#View new distributions of nominal values
+
+# View new distributions of nominal values
 DataExplorer::plot_histogram(
   geom_histogram_args = list(alpha = 0.5),
    data = clean_df,
          ggtheme=theme_bw())
 ```
-As we can see from above, our transformations helped to alleviate some of the kurtosis in the distributions that were highly skewed. Now, we can see that `AGE_transform`, `BLUEBOOK_transform`, `CAR_AGE_transform`, `HOME_VAL_transform`, `INCOME_transform`, `TIF_transform`, and `TRAVTIME_transform` are all the result of Boxcox transformations on the original variables. Additionally, `TARGET_AMT_transform` and `OLDCLAIM_transform` are the result of log transformations.
+
+As we can see from above, our transformations helped to alleviate some of the kurtosis in the distributions that were highly skewed. Now, we can see that `AGE_transform`, `BLUEBOOK_transform`, `CAR_AGE_transform`, `HOME_VAL_transform`, `INCOME_transform`, `TIF_transform`, and `TRAVTIME_transform` are all the result of Boxcox transformations on the original variables. Additionally, `TARGET_AMT_transform` and `OLDCLAIM_transform` are the results of log transformations.
 
 ## 3. Build Models
 
@@ -398,7 +423,7 @@ As we can see from above, our transformations helped to alleviate some of the ku
 The first model built was based on the entire dataset. The linear models will be attempting to predict the feature "TARGET_AMT" using the existing features within the dataset except for "TARGET_FLAG". These features are to be considered unknown. 
 
 
-First, we decided to split our cleaned dataset into a training and testing set (75% training, 25% testing). This was necessary as the provided holdout evaluation dataset doesn’t provide target values so we cannot measure our model performance against that dataset. This split was used on all models
+First, we split our cleaned dataset into training and testing sets (75% training, 25% testing). This was necessary as the provided holdout evaluation dataset didn’t provide target values so we cannot measure our model performance against that dataset. This split was used on all models.
 
 **First linear regression model, no transformations, all numeric predictors included**
 ```{r}
@@ -418,10 +443,10 @@ lm_spec<-linear_reg() %>%
 m1train<-merge(df_temp, df_train, by.x = 0, by.y = 0)
 m1test<-merge(df_temp, df_test, by.x = 0, by.y = 0)
 model1 <- lm_spec %>%  fit(TARGET_AMT ~ AGE + BLUEBOOK + CAR_AGE + CLM_FREQ + HOME_VAL + HOMEKIDS + INCOME + KIDSDRIV + MVR_PTS + OLDCLAIM + TIF + TRAVTIME + YOJ + CAR_TYPE + CAR_USE + EDUCATION + JOB + MSTATUS + PARENT1 + RED_CAR + REVOKED + SEX + URBANICITY,data = m1train)
-(mod1_sum <- summary(model1$fit))
+mod1_sum <- summary(model1$fit)
 
+print(mod1_sum)
 residPlot(mod1_sum)
-
 
 linearM_results<- model1 %>%
   predict(new_data = m1train) %>% 
@@ -436,18 +461,13 @@ linearM_results<- model1 %>%
     truth = m1test$TARGET_AMT,
     model = "LinearModel1",
     set = "Testing Set"))
-
-
 ```
 
-Results of the first model show that using all non-transformed data doesn't fully satisfy the assumptions for a linear regression model. We can also see several predictors that show insignificant correlations but before we discount any features, we will use the transformed data to satisfy the conditions of linear regression. Our R2 was 0.06 and our error was 4675 which is indicative of a very poor model.
+Results of the first model show that using all non-transformed data doesn't fully satisfy the assumptions for a linear regression model. We can also see several predictors that show insignificant correlations but before we discount any features, we will use the transformed data to satisfy the conditions of linear regression. Our **$R^2$ was 0.06** and our **error was 4675** which is indicative of a very poor model.
 
 #### Linear Regression Model 2
 
-
-The second model built was based on the entire dataset as well but various features were transformed as discussed in the Data Preparation section of this assignment. with our transformed variables via boxcox and linear transformations, linear regression was applied to the remaining data to assess predictability of our response variable.
-
-
+The second model built was based on the entire dataset as well but various features were transformed as discussed in the Data Preparation section of this assignment, e.g. by applying BoxCox and log transformations.  A linear regression model was fit to assess the predictability of our response variable.
 
 ```{r}
 #recipe that removes all non numeric variables
@@ -486,11 +506,11 @@ linearM_results<- bind_rows(
 
 ```
 
-Results of this model show that we satisfy the requirements of linear regression with residuals scattered around 0 and a normal-like Q-Q plot. There are still several non-significant variables such as OLDCLAIM, SEXz_F, YOJ, JOBDoctor, JOBLawyer, JOBStudent CAR_TYPE. our r2 for this model is 0.22 with a standard error of 3.2, better than model 1.
+Results of this model show that we satisfy the requirements of linear regression with residuals scattered around 0 and a normal-like Q-Q plot. There are still several non-significant variables such as `OLDCLAIM`, `SEXz_F`, `YOJ`, `JOBDoctor`, `JOBLawyer`, `JOBStudent` and `CAR_TYPE`. The Model 2 **$R^2$ is 0.22** with a **standard error of 3.2**, which shows better performance over Model 1.
 
 #### Linear Regression Model 3
 
-This third model builds upon attempts to perform a linear regression by removing select features that are insignificant to the model created in model 2. In addition to feature selection, using the tidymodels framework, we removed any features that are highly correlated with each other as well as any zero-variance features. Only numeric features were considered in this model.
+This third model builds upon attempts to perform a linear regression by removing select features that are insignificant to the model created in Model 2. In addition to feature selection, using the tidymodels framework, we removed any features that are highly correlated with each other as well as any zero-variance features. Only numeric features were considered in this model.
 
 
 ```{r}
@@ -536,7 +556,7 @@ linVP2 <-variableImportancePlot(model2$fit, "Linear Model 2")
 linVP3 <-variableImportancePlot(model3$fit, "Linear Model 3")
 ```
 
-This model did not perform as well linear model 2. This is likely due to the omission of features that were not numeric. The R2 for this model was .12 with a rmse of 3.43
+This model did not perform as well linear Model 2. This is likely due to the omission of features that were not numeric. Model 3 **$R^2$ was 0.12** with an **RMSE of 3.43**.
 
 ### Logistic Regression Model
 
@@ -546,9 +566,8 @@ The next set of models built are logistic regression models. These predict the o
 
 Similar to the linear regression models, the first model built was based on the entire dataset. The logistic models will be attempting to predict the feature "TARGET_FLAG" using the existing features within the dataset except for "TARGET_AMT". These features are to be considered unknown. 
 
-
 ```{r}
-
+# Setup logistic regression
 logit_spec<-logistic_reg() %>% 
   set_engine("glm") %>% 
   set_mode("classification")
@@ -556,30 +575,28 @@ logit_spec<-logistic_reg() %>%
 model1 <- logit_spec %>%  fit(TARGET_FLAG ~ BLUEBOOK + CAR_AGE + HOME_VAL + INCOME + PARENT1 + HOME_VAL + MSTATUS + SEX + EDUCATION + JOB + TRAVTIME + CAR_USE + KIDSDRIV + AGE + HOMEKIDS + YOJ + CAR_TYPE + RED_CAR + OLDCLAIM + CLM_FREQ + REVOKED + MVR_PTS + CAR_AGE + URBANICITY,data = m1train)
 (mod1_sum <- summary(model1$fit))
 
-logisticM_results<-
-bind_rows(
-predict(model1, new_data = m1train) %>% 
-  mutate(
-    truth = m1train$TARGET_FLAG,
-    model = "LogisticModel1",
-    set = "Training Set"
-  ),
-predict(model1, new_data = m1test)  %>% 
-  mutate(
-    truth = m1test$TARGET_FLAG,
-    model = "LogisticModel1",
-    set = "Testing Set"
-  )
-)
-
-
+logisticM_results <-
+  bind_rows(
+    predict(model1, new_data = m1train) %>% 
+      mutate(
+        truth = m1train$TARGET_FLAG,
+        model = "LogisticModel1",
+        set = "Training Set"
+      ),
+    predict(model1, new_data = m1test)  %>% 
+      mutate(
+        truth = m1test$TARGET_FLAG,
+        model = "LogisticModel1",
+        set = "Testing Set"
+      )
+    )
 ```
 
-The results of the first Logistic regression model on the untransformed data shows an AIC of 5486 with several insignificant predictors. We can use this information on the P-values to assess which features can be removed from the model.
+The results of the first Logistic regression model on the untransformed data show an **AIC=5486** with several insignificant predictors. We can use this information on the P-values to assess which features can be removed from the model.
 
 #### Logistic Regression Model 2
 
-In the the second logistic regression model, we remove variables will low variance, as well as variables that may exhibit colinearity. Additionally, 4 numeric features from our training set were binned into groups and used as predictors in lieu of numeric based predictors. The plot below shows the 4 features that were chosen to be binned within the analysis.
+In the second logistic regression model, we remove variables with low variance, as well as variables that may exhibit collinearity. Additionally, 4 numeric features from our training set were binned into groups and used as predictors in lieu of numerically based predictors. The plot below shows the 4 features that were chosen to be binned within the analysis.
 
 ```{r}
 
@@ -635,7 +652,8 @@ predict(model2, new_data = m2test)  %>%
 
 
 ```
-With this, the logistic model was run and the results show and AIC 5486. This is lower than the first model and implies that this is better at predicting the classification for TARGET_FLAG. 
+
+Our logistic model has an **AIC=5486**. This is lower than Model 1 and implies that this is better at predicting the classification for `TARGET_FLAG`. 
 
 #### Logistic Regression Model 3
 
@@ -644,6 +662,7 @@ One of the measures to consider when running classification models is the distri
 ```{r}
 prop.table(table(df$TARGET_FLAG))
 ```
+
 Because of this class imbalance, if we were to simply guess that all values are 0, that would technically lead to a 73% accurate model. To account for this, we will downsample the majority class in the final logistic model. This downsampling will allow the distribution of the training set to be 50/50. The testing dataset will remain as is.
 
 ```{r}
@@ -684,15 +703,14 @@ logVP2 <-variableImportancePlot(model2$fit, "Logistic Model 2")
 logVP3 <-variableImportancePlot(model3$fit, "Logistic Model 3")
 ```
 
-With this we end up with a model that has an AIC score of 3350, significantly less than that of the first two logistic models and thus we can say that this model has performed better. Additional metrics on each model are presented in the Model Performance Summary at the end of this document. 
-
+This model has an **AIC score of 3350**, significantly less than that of the first two logistic models and thus we can say that this model has performed better.  Additional metrics on each model are presented in the Model Performance Summary at the end of this document. 
 
 #### Using Logistic Results to improve Linear Regression
 
-Finally, to tune the linear regression model, we added the predictions made from our final logistic regression model to obtain the feature TARGET_FLAG. With this, an additional predictor feature was added to the model and could be used. 
+Finally, to tune the linear regression model, we added the predictions made from our final logistic regression model to obtain a new feature `TARGET_FLAG`. We will rerun a linear regression with the added feature. 
 
 ```{r}
-#building model by removing 4 least significant numeric variables from predicting
+# building model by removing 4 least significant numeric variables from predicting
 
 df_train['preds'] <- logisticM_results %>% filter(model == 'LogisticModel2') %>% filter(set == 'Training Set') %>% select(.pred_class)
 df_test['preds'] <- logisticM_results %>% filter(model == 'LogisticModel2') %>% filter(set == 'Testing Set') %>% select(.pred_class)
@@ -738,13 +756,13 @@ linearM_results<- bind_rows(
 linVP4 <-variableImportancePlot(model4$fit, "Linear Model 4")
 ```
 
-After using the results of the optimal logistic regression model to predict TARGET_FLAG and passing that into a linear regression, the R2 for the model has bumped up to 0.2476 with a standard error of 3.186. 
+After using the results of the optimal logistic regression model to predict TARGET_FLAG and passing that into linear regression, the $R^2$ for the linear regression model has increased to **0.2476** with a **standard error of 3.186**. 
 
 ### Model Performance Summary
 
-Finally, we can view the results of each of the linear regression models. The results for both the training and testing datasets are plotted below. There are many datapoints where `TARGET_FLAG` is 0 and thus leads to regression plots that may be weighted accordingly. Omitting points with 0 does not improve the model.
+Finally, we can view the results of each of the linear regression models. The results for both the training and testing datasets are plotted below. There are many data points where `TARGET_FLAG` is 0 and thus leads to regression plots that may be weighted accordingly. Omitting points with 0 do not improve the model.
 
-```{r}
+```{r message=FALSE}
 linearM_results %>% 
   ggplot(aes(x = truth,y = .pred))+
   geom_point(pch =21, alpha = 0.3, fill = "skyblue") +
@@ -757,7 +775,7 @@ stat_poly_eq(aes(label = paste(..adj.rr.label.., sep = "~~~")),
         panel.grid = element_blank())
 ```
 
-The results for both the training and testing datasets on each of the models is presented below. The linear model that performed the best on this dataset to predict our response variable `TARGET_AMT` is linear model 4. This model uses all predictor variables with transformations done to normalize numeric variables that did not follow gaussian distributions. Additionally, the predictor variable `TARGET_FLAG` was included in this analysis via prediction from the logistic regression model. Although this model may be the best of the four, it may not be sufficient in real life use cases as the $R^2$ implies that the model explains about 24% of the variance within the dataset. The results were consistent between the testing and the training datasets implying that no minimal overfitting/underfitting occured. 
+The results for both the training and testing datasets on each of the models are presented below. The linear model that performed the best on this dataset to predict our response variable, `TARGET_AMT`, is linear model 4. This model uses all predictor variables with transformations done to normalize numeric variables that did not follow Gaussian distributions. Additionally, the predictor variable, `TARGET_FLAG`, was included in this analysis via prediction from the logistic regression model. Although this model may be the best of the four, it may not be sufficient in real-life use cases as the $R^2$ implies that the model explains about 24% of the variance within the dataset. The results were consistent between the testing and the training datasets implying that no obvious overfitting or underfitting occurred. 
 
 ```{r}
 #getting linear results for training dataset
@@ -765,9 +783,9 @@ linearM_results %>% filter(set == "Training Set") %>%
   group_by(model,set) %>% 
 metrics(truth = truth, estimate = .pred) %>% 
   select(-c('.estimator')) %>% 
-  pivot_wider(names_from = '.metric',values_from = '.estimate') %>% 
+  pivot_wider(names_from = '.metric', values_from = '.estimate') %>% 
 #pushing to kable style table
-  kable() %>% 
+  kable(caption="Training Dataset Model Results") %>% 
   kable_styling(
     bootstrap_options = c("hover", "condensed", "responsive"),
     full_width = F)
@@ -779,7 +797,7 @@ metrics(truth = truth, estimate = .pred) %>%
   select(-c('.estimator')) %>% 
   pivot_wider(names_from = '.metric',values_from = '.estimate') %>% 
   #pushing to kable style table
-  kable() %>% 
+  kable(caption="Testing Dataset Model Results") %>% 
   kable_styling(
     bootstrap_options = c("hover", "condensed", "responsive"),
     full_width = F)
@@ -787,8 +805,7 @@ metrics(truth = truth, estimate = .pred) %>%
 
 ```
 
-
-Results of the logistic regression models are presented below for both the training and the testing datasets. The model that performed best using these classification models is logistic model 3. Although the accuracy of logistic model 1 and 2 are shown higher, the metric of importance here is the Kappa. The Kappa is a similar measure to accuracy however it is normalized by the accuracy that would be expected by chance alone which is useful with class imbalances presented in datasets. Due to the undersampling of the majority class for this model, the true accuracy (KAP), was best under model 3. The results of these models were consistent between both the testing and the training datasets implying minimal overfitting/underfitting and the ability for the model to generalize well.
+Results of the logistic regression models are presented below for both the training and the testing datasets. The model that performed best using these classification models is **Logistic Model 3**. Although the accuracy of Logistic Models 1 and 2 are shown higher, the metric of importance here is the Kappa. The Kappa is a similar measure to accuracy however it is normalized by the accuracy that would be expected by chance alone which is useful with class imbalances presented in datasets. Due to the undersampling of the majority class for this model, the true accuracy (KAP), was best under Model 3. The results of these models were consistent between both the testing and the training datasets implying minimal overfitting and underfitting and the ability for the model to generalize well.
 
 ```{r}
 logisticM_results %>% filter(set == "Training Set") %>% 
@@ -797,7 +814,7 @@ metrics(truth = truth, estimate = .pred_class) %>%
   select(-c('.estimator')) %>% 
   pivot_wider(names_from = '.metric',values_from = '.estimate')%>% 
   #pushing to kable style table
-  kable() %>% 
+  kable(caption="Training Dataset Model Results") %>% 
   kable_styling(
     bootstrap_options = c("hover", "condensed", "responsive"),
     full_width = F)
@@ -808,7 +825,7 @@ metrics(truth = truth, estimate = .pred_class) %>%
   select(-c('.estimator')) %>% 
   pivot_wider(names_from = '.metric',values_from = '.estimate')%>% 
   #pushing to kable style table
-  kable() %>% 
+  kable(caption="Testing Dataset Model Results") %>% 
   kable_styling(
     bootstrap_options = c("hover", "condensed", "responsive"),
     full_width = F)
@@ -816,10 +833,10 @@ metrics(truth = truth, estimate = .pred_class) %>%
 
 The final thing we will take a look at is our variable importance for each model.
 
-The final figure presented below shows the feature importance in each model. Note that not all features are presented from the models, but only the top 6 from each. Amongst all the models with the exception of linear model 3 (which did not consider ordinal features), being in an urban city that was highly rural was best predictor of when someone was in a car crash and if they would file claims against their insurance accordingly. Motor vehicle points was also a consistent feature that shows that people who have a history of violations tend to be more likely to get into a car accident. This is consistent with how car insurance plans are priced with high premiums being charged in urban areas like NYC relative to the suburbs. 
+The final figure presented below shows the feature importance in each model. Note that not all features are presented from the models, but only the top 6 from each. Amongst all the models with the exception of linear model 3 (which did not consider ordinal features), being in an **urban city** that was **highly rural** was best predictor of when someone was in a car crash and if they would file claims against their insurance accordingly. Motor vehicle points was also a consistent feature that shows that people who have a history of violations tend to be more likely to get into a car accident. This is consistent with how car insurance plans are priced with high premiums being charged in urban areas like NYC relative to the suburbs. 
 
-```{r, fig.width=8}
-grid.arrange(linVP1,linVP2,linVP3,logVP1,logVP2,logVP3,linVP4,ncol = 3)
+```{r, fig.width=8, fig.height=10}
+grid.arrange(linVP1, linVP2, linVP3, logVP1, logVP2, logVP3, linVP4, ncol = 3)
 ```
 
 
