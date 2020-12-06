@@ -1,0 +1,405 @@
+---
+title: "Homework5_Group3"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE)
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, include=FALSE, paged.print=FALSE}
+library(MASS)
+library(rpart.plot)
+library(ggplot2)
+library(ggfortify)
+library(gridExtra)
+library(forecast)
+library(fpp2)
+library(fma)
+library(kableExtra)
+library(e1071)
+library(mlbench)
+library(ggcorrplot)
+library(DataExplorer)
+library(timeDate)
+library(caret)
+library(GGally)
+library(corrplot)
+library(RColorBrewer)
+library(tibble)
+library(tidyr)
+library(tidyverse)
+library(dplyr)
+library(reshape2)
+library(mixtools)
+library(tidymodels)
+library(ggpmisc)
+library(regclass)
+
+#' Print a side-by-side Histogram and QQPlot of Residuals
+#'
+#' @param model A model
+#' @examples
+#' residPlot(myModel)
+#' @return null
+#' @export
+residPlot <- function(model) {
+  # Make sure a model was passed
+  if (is.null(model)) {
+    return
+  }
+  
+  layout(matrix(c(1,1,2,3), 2, 2, byrow = TRUE))
+  plot(residuals(model))
+  hist(model[["residuals"]], freq = FALSE, breaks = "fd", main = "Residual Histogram",
+       xlab = "Residuals",col="lightgreen")
+  lines(density(model[["residuals"]], kernel = "ep"),col="blue", lwd=3)
+  curve(dnorm(x,mean=mean(model[["residuals"]]), sd=sd(model[["residuals"]])), col="red", lwd=3, lty="dotted", add=T)
+  qqnorm(model[["residuals"]], main = "Residual Q-Q plot")
+  qqline(model[["residuals"]],col="red", lwd=3, lty="dotted")
+  par(mfrow = c(1, 1))
+}
+
+#' Print a Variable Importance Plot for the provided model
+#'
+#' @param model The model
+#' @param chart_title The Title to show on the plot
+#' @examples
+#' variableImportancePlot(myLinearModel, 'My Title)
+#' @return null
+#' @export
+variableImportancePlot <- function(model=NULL, chart_title='Variable Importance Plot') {
+  # Make sure a model was passed
+  if (is.null(model)) {
+    return
+  }
+  
+  # use caret and gglot to print a variable importance plot
+  varImp(model) %>% as.data.frame() %>% 
+    ggplot(aes(x = reorder(rownames(.), desc(Overall)), y = Overall)) +
+    geom_col(aes(fill = Overall)) +
+    theme(panel.background = element_blank(),
+          panel.grid = element_blank(),
+          axis.text.x = element_text(angle = 90)) +
+    scale_fill_gradient() +
+    labs(title = chart_title,
+         x = "Parameter",
+         y = "Relative Importance")
+}
+
+
+#' Print a Facet Chart of histograms
+#'
+#' @param df Dataset
+#' @param box Facet size (rows)
+#' @examples
+#' histbox(my_df, 3)
+#' @return null
+#' @export
+histbox <- function(df, box) {
+    par(mfrow = box)
+    ndf <- dimnames(df)[[2]]
+    
+    for (i in seq_along(ndf)) {
+            data <- na.omit(unlist(df[, i]))
+            hist(data, breaks = "fd", main = paste("Histogram of", ndf[i]),
+                 xlab = ndf[i], freq = FALSE)
+            lines(density(data, kernel = "ep"), col = 'red')
+    }
+    
+    par(mfrow = c(1, 1))
+}
+
+#' Extract key performance results from a model
+#'
+#' @param model A linear model of interest
+#' @examples
+#' model_performance_extraction(my_model)
+#' @return data.frame
+#' @export
+model_performance_extraction <- function(model=NULL) {
+  # Make sure a model was passed
+  if (is.null(model)) {
+    return
+  }
+  
+  data.frame("RSE" = model$sigma,
+             "Adj R2" = model$adj.r.squared,
+             "F-Statistic" = model$fstatistic[1])
+}
+
+```
+
+## Overview
+
+The wine dataset is a highly popular one in the data science community, as it models some of the challenges of real world datasets and can be modeled by a variety of different model types.
+
+We will first explore the data looking for issues or challenges (i.e. missing data, outliers, possible coding errors, multicollinearlity, etc).  Once we have a handle on the data, we will apply any necessary cleaning steps.  Once we have a reasonable dataset to work with, we will build and evaluate three different linear models that predict seasonal wins.  Our dataset includes both training data and evaluation data - we will train using the main training data, then evaluate models based on how well they perform against the holdout evaluation data.  Finally we will select a final model that offers the best compromise between accuracy and simplicity. 
+
+
+## 1. Data Exploration
+
+*Describe the size and the variables in the moneyball training data set. Consider that too much detail will cause a
+manager to lose interest while too little detail will make the manager consider that you aren’t doing your job. Some
+suggestions are given below. Please do NOT treat this as a check list of things to do to complete the assignment.
+You should have your own thoughts on what to tell the boss. These are just ideas.*
+
+### Dataset
+
+The wine training set contains 16 columns - including the target variable "TARGET" - and 12795 rows, covering a variety of different brands of wine. The data-set is entirely numerical variables, but also contains some variables that are highly discrete and have a limited number of possible values. We believe it is still reasonable to treat these as numerical variables since the different values follow a natural numerical order.
+
+Below, we created a chart that describes each variable in the dataset and the theoretical effect it will have on the number of wins projected for a team.
+
+```{r load_data, echo=FALSE}
+# Load Moneyball baseball dataset
+df <- read.csv('datasets/wine-training-data.csv')
+df_eval <- read.csv('datasets/wine-evaluation-data.csv')
+```
+
+![Variables of Interest](./figures/Variables.png)
+
+
+Given that the Index column had no impact on the target variable, number of wins, it was dropped. 
+
+```{r echo=FALSE}
+# Drop the INDEX column - this won't be useful
+df <- df %>% 
+  dplyr::select(-names(df)[1])
+```
+
+
+### Summary Stats
+
+We compiled summary statistics on our data set to better understand the data before modeling. 
+
+
+```{r columns, echo=FALSE}
+# Display summary statistics
+summary(df)
+
+```
+
+The first observation is the prevalance of NA's throughout the dataset. Of the 14 feature columns, 8 of them contain at least some NA values. We also see that the target value is always between 0 and 8, and appears that it is likely a discrete variable as all the percentiles are integer. Another worrying factor is that many of the numerical features measuring the quantity of a chemical in the wine have a negative minimum value, which should not be possible and will need to be adjusted for.
+
+
+### Distributions
+
+Next, we wanted to get an idea of the distribution profiles for each of the variables. 
+
+
+```{r, fig.height = 10, fig.width = 10, echo=FALSE}
+# Prepare data for ggplot
+gather_df <- df %>% 
+  gather(key = 'variable', value = 'value')
+
+# Histogram plots of each variable
+ggplot(gather_df) + 
+  geom_histogram(aes(x=value, y = ..density..), bins=30) + 
+  geom_density(aes(x=value), color='blue') +
+  facet_wrap(. ~variable, scales='free', ncol=4)
+```
+
+We see that most variables have a somewhat normal (although steep) distribution. However, this is due to the fact that numeric variables have negative values which is impossible. We will clean these values and then re plot the data.
+
+```{r}
+clean_negatives <- function(vector){
+  sapply(vector, function(x){abs(x)})
+}
+df$Alcohol <- clean_negatives(df$Alcohol)
+df$Chlorides <- clean_negatives(df$Chlorides)
+df$CitricAcid <- clean_negatives(df$CitricAcid)
+df$FixedAcidity <- clean_negatives(df$FixedAcidity)
+df$FreeSulfurDioxide <- clean_negatives(df$FreeSulfurDioxide)
+df$ResidualSugar <- clean_negatives(df$ResidualSugar)
+df$Sulphates <- clean_negatives(df$Sulphates)
+df$TotalSulfurDioxide <- clean_negatives(df$TotalSulfurDioxide)
+df$VolatileAcidity <- clean_negatives(df$VolatileAcidity)
+
+# Prepare data for ggplot
+gather_df <- df %>% 
+  gather(key = 'variable', value = 'value')
+
+# Histogram plots of each variable
+ggplot(gather_df) + 
+  geom_histogram(aes(x=value, y = ..density..), bins=30) + 
+  geom_density(aes(x=value), color='blue') +
+  facet_wrap(. ~variable, scales='free', ncol=4)
+```
+The distribution profiles show the prevalence of kurtosis, specifically right skew in variables Chlorides, CitricAcid, FixedAcidity, FreeSulfurDioxide, ResidualSugar, Sulphates, TotalSulfurDioxide, and VolatileAcidity. It is sensible to see a large prevalence of right skewed variables as these variables have a left bound at 0 but no right bound, leading to a right skew. These deviations from a traditional normal distribution can be problematic for linear regression assumptions, and thus we might need to transform the data.
+
+### Boxplots
+
+In addition to creating histogram distributions, we also elected to use box-plots to get an idea of the spread of each variable. 
+
+```{r, fig.height = 10, fig.width = 10, echo=FALSE}
+# Prepare data for ggplot
+gather_df <- df %>% 
+  gather(key = 'variable', value = 'value')
+
+# Boxplots for each variable
+ggplot(gather_df, aes(variable, value)) + 
+  geom_boxplot() + 
+  facet_wrap(. ~variable, scales='free', ncol=6)
+```
+
+The box-plots do not reveal any enormous outliers in any of the features, meaning it is unlikely we will need to perform outlier detection and removal. 
+
+### Variable Plots
+
+Finally, we wanted to plot scatter plots of each variable versus the target variable, TARGET, to get an idea of the relationship between them. 
+
+```{r, fig.height = 10, fig.width = 10, echo=FALSE}
+# Plot scatter plots of each variable versus the target variable
+featurePlot(df[,2:ncol(df)], df[,1], pch = 20)
+```
+
+Due to the discrete nature of the target, it is somewhat difficult to see clear linear relationships in the data. However, it does appear that both STARS and LabelAppeal have a significant positive relationship with the target, and many of the chemical features have at least some negative relationship with the target as lower values led to more values of 8 and 7 in the target variable.
+
+Overall, although our plots indicate some interesting relationships between our variables, they also reveal some significant issues with the data. 
+
+For instance, most of the predictor variables are skewed or non-normally distributed, and will need to be transformed. Additionally, there are many data points that contain missing data that will need to be either imputed or discarded. There also was the issue of nonsensical negative values. We have chosen to take the absolute value of these as the feature value as there are so many of these values: however, there is no evidence to back up that this is a correct decision and that these values are not simply missing.
+
+### Missing Data
+
+When we initially viewed the first few rows of the raw data, we already noticed missing data.  Let's assess which fields have missing data.
+
+```{r echo=FALSE} 
+# Identify missing data by Feature and display percent breakout
+missing <- colSums(df %>% sapply(is.na))
+missing_pct <- round(missing / nrow(df) * 100, 2)
+stack(sort(missing_pct, decreasing = TRUE))
+```
+
+In the project description, it was noted that the fact that a certain variable is missing may be predictive. As such, before imputing the missing variables, we will create a dummy variable for each feature with missing values indicating whether or not that feature was missing. We will then impute the missing data as the median of the feature, while still retaining the information that the value was missing. This allows us to use missing values in our regression model when normally this would not be possible.
+
+```{r echo=FALSE}
+create_na_dummy <- function(vector){
+  as.integer(vector %>% is.na())
+}
+df$STARS_NA <- create_na_dummy(df$STARS)
+df$Sulphates_NA <- create_na_dummy(df$Sulphates)
+df$TotalSulfurDioxide_NA <- create_na_dummy(df$TotalSulfurDioxide)
+df$Alcohol_NA <- create_na_dummy(df$Alcohol)
+df$FreeSulfurDioxide_NA <- create_na_dummy(df$FreeSulfurDioxide)
+df$Chlorides_NA <- create_na_dummy(df$Chlorides)
+df$ResidualSugar_NA <- create_na_dummy(df$ResidualSugar)
+df$pH_NA <- create_na_dummy(df$pH)
+
+clean_df <- df %>% 
+  impute(what = 'median') %>% as.data.frame()
+
+gather_clean_df <- clean_df %>% 
+  gather(key = 'variable', value = 'value', -TARGET)
+```
+
+### Feature-Target Correlations
+
+With our missing data imputed correctly, we can now build off the scatter plots from above to quantify the correlations between our target variable and predictor variable. We will want to choose those with stronger positive or negative correlations.  Features with correlations closer to zero will probably not provide any meaningful information on explaining wins by a team.
+
+```{r echo=FALSE}
+# Show feature correlations/target by decreasing correlation
+stack(sort(cor(clean_df[,1], clean_df[,2:ncol(clean_df)])[,], decreasing=TRUE))
+```
+
+STARS and LabelAppeal have the highest correlation with the Target, which matches what we saw in the variable plots above. Interestingly, STARS_NA has a HUGE negative correlation with the target, indicating that wines missing a rating are MUCH less likely to have high purchase quantities.
+
+### Multicolinearity
+
+One problem that can occur with multi-variable regression is correlation between variables, or multicolinearity. A quick check is to run correlations between variables.   
+
+```{r echo=FALSE}
+# Calculate and plot the Multicolinearity
+correlation = cor(clean_df, use = 'pairwise.complete.obs')
+
+corrplot(correlation, 'ellipse', type = 'lower', order = 'hclust',
+         col=brewer.pal(n=8, name="RdYlBu"))
+```
+
+We see that the features have very low correlations with each other, meaning that there is not much multicollinearity present in the dataset. This means that the assumptions of linear regression are more likely to be met.
+
+## 2. Data Preparation
+
+To summarize our data preparation and exploration, we can distinguish our findings into a few categories below:
+
+### Removed Fields
+
+We removed the INDEX field as it offers no information for a model.  
+
+### Missing Values
+
+For the 8 features with missing values, we created a dummy variable that is 1 if the value is missing and 0 if it is not. We then imputed the missing values as the median of the feature, allowing us to using records with missing values while still including the information that the value is missing.
+
+### Outliers
+
+Many of the numerical features had unreasonable negative values. We transformed these to be the absolute value of the feature, as a data entry error seems likely given the quantity of negative records.
+
+### Transform non-normal variables
+
+Finally, as mentioned earlier in our data exploration, and our findings from our histogram plots, we can see that some of our variables are highly skewed. To address this, we decided to perform some transformations to make them more normally distributed. Here are some plots to demonstrate the changes in distributions before and after the transformations:  
+
+```{r echo=FALSE, fig.height=12, fig.width=10, message=FALSE, warning=FALSE}
+
+# created empty data frame to store transformed variables
+df_temp <- data.frame(matrix(ncol = 1, nrow = length(clean_df$TARGET)))
+
+# performed log transformation
+df_temp$Chlorides <- clean_df$Chlorides
+df_temp$Chlorides_transform <- log(clean_df$Chlorides)
+
+# performed log transformation
+df_temp$CitricAcid <- clean_df$CitricAcid
+df_temp$CitricAcid_transform <- log(clean_df$CitricAcid)
+
+# performed a log transformation
+df_temp$FixedAcidity <- clean_df$FixedAcidity
+df_temp$FixedAcidity_transform <- log(clean_df$FixedAcidity)
+
+# performed a log transformation
+df_temp$FreeSulfurDioxide <- clean_df$FreeSulfurDioxide
+df_temp$FreeSulfurDioxide_transform <- log(clean_df$FreeSulfurDioxide)
+
+# performed a log transformation
+df_temp$ResidualSugar <- clean_df$ResidualSugar
+df_temp$ResidualSugar_transform <- log(clean_df$ResidualSugar)
+
+# performed a log transformation
+df_temp$Sulphates <- clean_df$Sulphates
+df_temp$Sulphates_transform <- log(clean_df$Sulphates)
+
+# performed a log transformation
+df_temp$TotalSulfurDioxide <- clean_df$TotalSulfurDioxide
+df_temp$TotalSulfurDioxide_transform <- log(clean_df$TotalSulfurDioxide)
+
+# performed a log transformation
+df_temp$VolatileAcidity <- clean_df$VolatileAcidity
+df_temp$VolatileAcidity_transform <- log(clean_df$VolatileAcidity)
+
+df_temp <- df_temp[, 2:17]
+
+histbox(df_temp, c(6, 2))
+
+# performed boxcox transformation after identifying proper lambda
+#df_temp$BATTING_HR <- clean_df$BATTING_HR
+#battingHR_lambda <- BoxCox.lambda(clean_df$BATTING_HR)
+#df_temp$BATTING_HR_transform <- BoxCox(clean_df$BATTING_HR, battingHR_lambda)
+```
+
+We see that after the transformations, the variables are more centered and more closely resemble a normal distribution, although clearly they are still not perfect normal distributions.
+
+### Finalizing the dataset for model building 
+
+With our transformations complete, we can now add these into our `clean_df` dataframe and continue on to build our models.
+
+```{r}
+# Build clean dataframe with transformation
+
+clean_df <- data.frame(cbind(clean_df, 
+                        Chlorides_transform = df_temp$Chlorides_transform,
+                        CitricAcid_transform = df_temp$CitricAcid_transform,
+                        FixedAcidity_transform = df_temp$FixedAcidity_transform,
+                        FreeSulfurDioxide_transform = df_temp$FreeSulfurDioxide_transform,
+                        ResidualSugar_transform = df_temp$ResidualSugar_transform,
+                        Sulphates_transform = df_temp$Sulphates_transform,
+                        TotalSulfurDioxide_transform = df_temp$TotalSulfurDioxide_transform,
+                        VolatileAcidity_transform = df_temp$VolatileAcidity_transform))
+```
