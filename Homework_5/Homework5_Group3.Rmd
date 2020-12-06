@@ -1,6 +1,17 @@
 ---
-title: "Homework5_Group3"
-output: html_document
+title: 'DS 621 Fall2020: Homework 5 (Group3)'
+subtitle: 'Wine Regression'
+author: 'Zach Alexander, Sam Bellows, Donny Lofland, Joshua Registe, Neil Shah, Aaron Zalki'
+data: '12/06/2020'
+output:
+  html_document:  
+    theme: cerulean
+    highlight: pygments
+    css: https://raw.githubusercontent.com/djlofland/DS621_F2020_Group3/master/Homework_5/lab.css
+    toc: true
+    toc_float: true
+  pdf_document:
+    extra_dependencies: ["geometry", "multicol", "multirow", "xcolor"]
 ---
 
 ```{r setup, include=FALSE}
@@ -35,7 +46,6 @@ library(mixtools)
 library(tidymodels)
 library(ggpmisc)
 library(regclass)
-
 #' Print a side-by-side Histogram and QQPlot of Residuals
 #'
 #' @param model A model
@@ -59,7 +69,6 @@ residPlot <- function(model) {
   qqline(model[["residuals"]],col="red", lwd=3, lty="dotted")
   par(mfrow = c(1, 1))
 }
-
 #' Print a Variable Importance Plot for the provided model
 #'
 #' @param model The model
@@ -86,8 +95,6 @@ variableImportancePlot <- function(model=NULL, chart_title='Variable Importance 
          x = "Parameter",
          y = "Relative Importance")
 }
-
-
 #' Print a Facet Chart of histograms
 #'
 #' @param df Dataset
@@ -109,7 +116,6 @@ histbox <- function(df, box) {
     
     par(mfrow = c(1, 1))
 }
-
 #' Extract key performance results from a model
 #'
 #' @param model A linear model of interest
@@ -127,7 +133,6 @@ model_performance_extraction <- function(model=NULL) {
              "Adj R2" = model$adj.r.squared,
              "F-Statistic" = model$fstatistic[1])
 }
-
 ```
 
 ## Overview
@@ -152,11 +157,11 @@ Below, we created a chart that describes each variable in the dataset and the th
 
 ```{r load_data, echo=FALSE}
 # Load Moneyball baseball dataset
-df <- read.csv('datasets/wine-training-data.csv')
-df_eval <- read.csv('datasets/wine-evaluation-data.csv')
+df <- read.csv('https://raw.githubusercontent.com/djlofland/DS621_F2020_Group3/master/Homework_5/datasets/wine-training-data.csv')
+df_eval <- read.csv('https://raw.githubusercontent.com/djlofland/DS621_F2020_Group3/master/Homework_5/datasets/wine-evaluation-data.csv')
 ```
 
-![Variables of Interest](./figures/Variables.png)
+![Variables of Interest](https://raw.githubusercontent.com/djlofland/DS621_F2020_Group3/master/Homework_5/figures/Variables.png)
 
 
 Given that the Index column had no impact on the target variable, number of wins, it was dropped. 
@@ -176,7 +181,6 @@ We compiled summary statistics on our data set to better understand the data bef
 ```{r columns, echo=FALSE}
 # Display summary statistics
 summary(df)
-
 ```
 
 The first observation is the prevalance of NA's throughout the dataset. Of the 14 feature columns, 8 of them contain at least some NA values. We also see that the target value is always between 0 and 8, and appears that it is likely a discrete variable as all the percentiles are integer. Another worrying factor is that many of the numerical features measuring the quantity of a chemical in the wine have a negative minimum value, which should not be possible and will need to be adjusted for.
@@ -191,7 +195,6 @@ Next, we wanted to get an idea of the distribution profiles for each of the vari
 # Prepare data for ggplot
 gather_df <- df %>% 
   gather(key = 'variable', value = 'value')
-
 # Histogram plots of each variable
 ggplot(gather_df) + 
   geom_histogram(aes(x=value, y = ..density..), bins=30) + 
@@ -214,11 +217,9 @@ df$ResidualSugar <- clean_negatives(df$ResidualSugar)
 df$Sulphates <- clean_negatives(df$Sulphates)
 df$TotalSulfurDioxide <- clean_negatives(df$TotalSulfurDioxide)
 df$VolatileAcidity <- clean_negatives(df$VolatileAcidity)
-
 # Prepare data for ggplot
 gather_df <- df %>% 
   gather(key = 'variable', value = 'value')
-
 # Histogram plots of each variable
 ggplot(gather_df) + 
   geom_histogram(aes(x=value, y = ..density..), bins=30) + 
@@ -235,7 +236,6 @@ In addition to creating histogram distributions, we also elected to use box-plot
 # Prepare data for ggplot
 gather_df <- df %>% 
   gather(key = 'variable', value = 'value')
-
 # Boxplots for each variable
 ggplot(gather_df, aes(variable, value)) + 
   geom_boxplot() + 
@@ -284,10 +284,8 @@ df$FreeSulfurDioxide_NA <- create_na_dummy(df$FreeSulfurDioxide)
 df$Chlorides_NA <- create_na_dummy(df$Chlorides)
 df$ResidualSugar_NA <- create_na_dummy(df$ResidualSugar)
 df$pH_NA <- create_na_dummy(df$pH)
-
 clean_df <- df %>% 
   impute(what = 'median') %>% as.data.frame()
-
 gather_clean_df <- clean_df %>% 
   gather(key = 'variable', value = 'value', -TARGET)
 ```
@@ -310,7 +308,6 @@ One problem that can occur with multi-variable regression is correlation between
 ```{r echo=FALSE}
 # Calculate and plot the Multicolinearity
 correlation = cor(clean_df, use = 'pairwise.complete.obs')
-
 corrplot(correlation, 'ellipse', type = 'lower', order = 'hclust',
          col=brewer.pal(n=8, name="RdYlBu"))
 ```
@@ -338,46 +335,34 @@ Many of the numerical features had unreasonable negative values. We transformed 
 Finally, as mentioned earlier in our data exploration, and our findings from our histogram plots, we can see that some of our variables are highly skewed. To address this, we decided to perform some transformations to make them more normally distributed. Here are some plots to demonstrate the changes in distributions before and after the transformations:  
 
 ```{r echo=FALSE, fig.height=12, fig.width=10, message=FALSE, warning=FALSE}
-
 # created empty data frame to store transformed variables
 df_temp <- data.frame(matrix(ncol = 1, nrow = length(clean_df$TARGET)))
-
 # performed log transformation
 df_temp$Chlorides <- clean_df$Chlorides
 df_temp$Chlorides_transform <- log(clean_df$Chlorides)
-
 # performed log transformation
 df_temp$CitricAcid <- clean_df$CitricAcid
 df_temp$CitricAcid_transform <- log(clean_df$CitricAcid)
-
 # performed a log transformation
 df_temp$FixedAcidity <- clean_df$FixedAcidity
 df_temp$FixedAcidity_transform <- log(clean_df$FixedAcidity)
-
 # performed a log transformation
 df_temp$FreeSulfurDioxide <- clean_df$FreeSulfurDioxide
 df_temp$FreeSulfurDioxide_transform <- log(clean_df$FreeSulfurDioxide)
-
 # performed a log transformation
 df_temp$ResidualSugar <- clean_df$ResidualSugar
 df_temp$ResidualSugar_transform <- log(clean_df$ResidualSugar)
-
 # performed a log transformation
 df_temp$Sulphates <- clean_df$Sulphates
 df_temp$Sulphates_transform <- log(clean_df$Sulphates)
-
 # performed a log transformation
 df_temp$TotalSulfurDioxide <- clean_df$TotalSulfurDioxide
 df_temp$TotalSulfurDioxide_transform <- log(clean_df$TotalSulfurDioxide)
-
 # performed a log transformation
 df_temp$VolatileAcidity <- clean_df$VolatileAcidity
 df_temp$VolatileAcidity_transform <- log(clean_df$VolatileAcidity)
-
 df_temp <- df_temp[, 2:17]
-
 histbox(df_temp, c(6, 2))
-
 # performed boxcox transformation after identifying proper lambda
 #df_temp$BATTING_HR <- clean_df$BATTING_HR
 #battingHR_lambda <- BoxCox.lambda(clean_df$BATTING_HR)
@@ -392,7 +377,6 @@ With our transformations complete, we can now add these into our `clean_df` data
 
 ```{r}
 # Build clean dataframe with transformation
-
 clean_df <- data.frame(cbind(clean_df, 
                         Chlorides_transform = df_temp$Chlorides_transform,
                         CitricAcid_transform = df_temp$CitricAcid_transform,
@@ -403,3 +387,6 @@ clean_df <- data.frame(cbind(clean_df,
                         TotalSulfurDioxide_transform = df_temp$TotalSulfurDioxide_transform,
                         VolatileAcidity_transform = df_temp$VolatileAcidity_transform))
 ```
+
+## 3. Model Building
+
