@@ -390,3 +390,83 @@ clean_df <- data.frame(cbind(clean_df,
 
 ## 3. Model Building
 
+### Poisson Model 1
+
+The predictors for the following model are:
+
+`FixedAcidity` `VolatileAcidity` `CitricAcid` `ResidualSugar` `Chlorides` `FreeSulfurDioxide` `TotalSulfurDioxide` `Density` `pH` `Sulphates` `Alcohol` `LabelAppeal` `AcidIndex` `STARS`
+
+```{r echo=TRUE}
+
+poiss1 <- glm(TARGET~ FixedAcidity+VolatileAcidity+CitricAcid+ResidualSugar+Chlorides
+              +FreeSulfurDioxide+TotalSulfurDioxide+Density+pH+Sulphates+Alcohol
+              +as.factor(LabelAppeal)+as.factor(AcidIndex) + as.factor(STARS),data=clean_df, 
+              family=poisson)
+summary(poiss1)
+
+```
+
+### Poisson Model 2
+
+The predictors for the following model are:
+
+`VolatileAcidity` `TotalSulfurDioxide` `Alcohol` `LabelAppeal` `AcidIndex` `STARS`
+
+```{r echo=TRUE}
+
+poiss2 <- glm(TARGET~ VolatileAcidity+TotalSulfurDioxide+Alcohol+as.factor(LabelAppeal)
+              +as.factor(AcidIndex) + as.factor(STARS),data=clean_df, family=poisson)
+
+summary(poiss2)
+
+```
+
+
+### Negative Binomial Model 3
+
+Similar to Poisson Model 1, the predictors for the following model are:
+
+`FixedAcidity` `VolatileAcidity` `CitricAcid` `ResidualSugar` `Chlorides` `FreeSulfurDioxide` `TotalSulfurDioxide` `Density` `pH` `Sulphates` `Alcohol` `LabelAppeal` `AcidIndex` `STARS`
+
+```{r echo=TRUE}
+
+nb3 <- glm.nb(TARGET~ FixedAcidity+VolatileAcidity+CitricAcid+ResidualSugar+Chlorides
+              +FreeSulfurDioxide+TotalSulfurDioxide+Density+pH+Sulphates+Alcohol
+              +as.factor(LabelAppeal)+as.factor(AcidIndex) + as.factor(STARS),data=clean_df)
+
+summary(nb3)
+
+```
+
+
+### Negative Binomial Model 4
+
+Similar to Poisson Model 2, the predictors for the following model are:
+
+`VolatileAcidity` `TotalSulfurDioxide` `Alcohol` `LabelAppeal` `AcidIndex` `STARS`
+
+```{r echo=TRUE}
+
+nb4 <- glm.nb(TARGET~ VolatileAcidity+TotalSulfurDioxide+Alcohol+as.factor(LabelAppeal)
+              +as.factor(AcidIndex) + as.factor(STARS),data=clean_df)
+
+summary (nb4)
+
+```
+
+### Linear Model 5
+
+The predictors for the following model are:
+
+`FixedAcidity` `VolatileAcidity` `CitricAcid` `ResidualSugar` `Chlorides` `FreeSulfurDioxide` `TotalSulfurDioxide` `Density` `pH` `Sulphates` `Alcohol` `LabelAppeal` `AcidIndex` `STARS`
+
+```{r echo=TRUE}
+
+lm5 <- lm(TARGET~FixedAcidity+VolatileAcidity+CitricAcid+ResidualSugar+Chlorides
+              +FreeSulfurDioxide+TotalSulfurDioxide+Density+pH+Sulphates+Alcohol
+              +as.factor(LabelAppeal)+as.factor(AcidIndex) + as.factor(STARS),data=clean_df)
+summary (lm5)
+
+```
+
+## 4. Model Selection & Analysis
