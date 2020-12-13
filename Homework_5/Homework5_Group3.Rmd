@@ -462,7 +462,7 @@ model_test_perf <- function(model, trainX, trainY, testX, testY) {
 
 ### Poisson Model 1
 
-In this first model, we include all available features including the dummy NA indicators. Features include:
+In this first model, we include all available features. Features include:
 
 `FixedAcidity`, `VolatileAcidity`, `CitricAcid`, `ResidualSugar`, `Chlorides`, `FreeSulfurDioxide`, `TotalSulfurDioxide`, `Density`, `pH`, `Sulphates`, `Alcohol`, `LabelAppeal`, `AcidIndex`, `STARS`
 
