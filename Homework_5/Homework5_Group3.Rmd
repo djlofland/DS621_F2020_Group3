@@ -46,6 +46,8 @@ library(mixtools)
 library(tidymodels)
 library(ggpmisc)
 library(regclass)
+library(skimr)
+
 #' Print a side-by-side Histogram and QQPlot of Residuals
 #'
 #' @param model A model
@@ -144,14 +146,9 @@ We will first explore the data looking for issues or challenges (i.e. missing da
 
 ## 1. Data Exploration
 
-*Describe the size and the variables in the moneyball training data set. Consider that too much detail will cause a
-manager to lose interest while too little detail will make the manager consider that you aren’t doing your job. Some
-suggestions are given below. Please do NOT treat this as a check list of things to do to complete the assignment.
-You should have your own thoughts on what to tell the boss. These are just ideas.*
-
 ### Dataset
 
-The wine training set contains 16 columns - including the target variable "TARGET" - and 12795 rows, covering a variety of different brands of wine. The data-set is entirely numerical variables, but also contains some variables that are highly discrete and have a limited number of possible values. We believe it is still reasonable to treat these as numerical variables since the different values follow a natural numerical order.
+The wine training set contains 16 columns - including the target variable `TARGET` - and 12795 rows, covering a variety of different brands of wine. The data-set is entirely numerical variables, but also contains some variables that are highly discrete and have a limited number of possible values. We believe it is still reasonable to treat these as numerical variables since the different values follow a natural numerical order.
 
 Below, we created a chart that describes each variable in the dataset and the theoretical effect it will have on the number of wins projected for a team.
 
@@ -164,12 +161,15 @@ df_eval <- read.csv('https://raw.githubusercontent.com/djlofland/DS621_F2020_Gro
 ![Variables of Interest](https://raw.githubusercontent.com/djlofland/DS621_F2020_Group3/master/Homework_5/figures/Variables.png)
 
 
-Given that the Index column had no impact on the target variable, number of wins, it was dropped. 
+Given that the Index column had no impact on the target variable, number of wines, it was dropped. 
 
 ```{r echo=FALSE}
 # Drop the INDEX column - this won't be useful
 df <- df %>% 
-  dplyr::select(-names(df)[1])
+  dplyr::select(-INDEX)
+
+df_eval <- df_eval %>% 
+  dplyr::select(-IN)
 ```
 
 
@@ -180,10 +180,12 @@ We compiled summary statistics on our data set to better understand the data bef
 
 ```{r columns, echo=FALSE}
 # Display summary statistics
-summary(df)
+skim(df)
 ```
 
-The first observation is the prevalance of NA's throughout the dataset. Of the 14 feature columns, 8 of them contain at least some NA values. We also see that the target value is always between 0 and 8, and appears that it is likely a discrete variable as all the percentiles are integer. Another worrying factor is that many of the numerical features measuring the quantity of a chemical in the wine have a negative minimum value, which should not be possible and will need to be adjusted for.
+The first observation is the prevalance of NA's throughout the dataset. Of the 14 feature columns, 8 of them contain at least some NA values. We also see that the `TARGET` value is always between 0 and 8, which makes sense as this is the "Number of Cases of Wine Sold" (we would not expect partial cases). 
+
+We also note that many of the numerical features measuring the quantity of a chemical in the wine have a negative minimum value.  We are assuming the original chemical measurements were normalized (possible a log transform) allowing for negative values, since technically negative concentrations shouldn't be physically possible.  As such, we chose to leave those values as-is.  
 
 
 ### Distributions
@@ -195,6 +197,7 @@ Next, we wanted to get an idea of the distribution profiles for each of the vari
 # Prepare data for ggplot
 gather_df <- df %>% 
   gather(key = 'variable', value = 'value')
+
 # Histogram plots of each variable
 ggplot(gather_df) + 
   geom_histogram(aes(x=value, y = ..density..), bins=30) + 
@@ -202,31 +205,14 @@ ggplot(gather_df) +
   facet_wrap(. ~variable, scales='free', ncol=4)
 ```
 
-We see that most variables have a somewhat normal (although steep) distribution. However, this is due to the fact that numeric variables have negative values which is impossible. We will clean these values and then re plot the data.
+We see that most variables have a somewhat normal (although steep) distribution.
 
-```{r}
-clean_negatives <- function(vector){
-  sapply(vector, function(x){abs(x)})
-}
-df$Alcohol <- clean_negatives(df$Alcohol)
-df$Chlorides <- clean_negatives(df$Chlorides)
-df$CitricAcid <- clean_negatives(df$CitricAcid)
-df$FixedAcidity <- clean_negatives(df$FixedAcidity)
-df$FreeSulfurDioxide <- clean_negatives(df$FreeSulfurDioxide)
-df$ResidualSugar <- clean_negatives(df$ResidualSugar)
-df$Sulphates <- clean_negatives(df$Sulphates)
-df$TotalSulfurDioxide <- clean_negatives(df$TotalSulfurDioxide)
-df$VolatileAcidity <- clean_negatives(df$VolatileAcidity)
-# Prepare data for ggplot
-gather_df <- df %>% 
-  gather(key = 'variable', value = 'value')
-# Histogram plots of each variable
-ggplot(gather_df) + 
-  geom_histogram(aes(x=value, y = ..density..), bins=30) + 
-  geom_density(aes(x=value), color='blue') +
-  facet_wrap(. ~variable, scales='free', ncol=4)
-```
-The distribution profiles show the prevalence of kurtosis, specifically right skew in variables Chlorides, CitricAcid, FixedAcidity, FreeSulfurDioxide, ResidualSugar, Sulphates, TotalSulfurDioxide, and VolatileAcidity. It is sensible to see a large prevalence of right skewed variables as these variables have a left bound at 0 but no right bound, leading to a right skew. These deviations from a traditional normal distribution can be problematic for linear regression assumptions, and thus we might need to transform the data.
+The distribution profiles show right skew in variables `AcidIndex`, and `STARS`. 
+
+More interesting is the shape of many features where they are centered with most values clustered at the center and somewhat uniform shape above and below.  It almost appears like a tri-modal distribution with a low, middle and high normal distributions overlapping.  We are not going to do extensive feature engineer, or we might consider breaking these features up into 3 separate features each.  Two approaches include: 
+
+1. Use `mixTools` to separate the multi-modal curves into 3 distinct (and separate) features each capturing just the `low`, `middle` or `high` values and retaining a numerical value.
+2. Discretize the features converting them into categorical values indicating `low`, `middle` or `high` value.
 
 ### Boxplots
 
@@ -236,13 +222,31 @@ In addition to creating histogram distributions, we also elected to use box-plot
 # Prepare data for ggplot
 gather_df <- df %>% 
   gather(key = 'variable', value = 'value')
+
 # Boxplots for each variable
 ggplot(gather_df, aes(variable, value)) + 
   geom_boxplot() + 
   facet_wrap(. ~variable, scales='free', ncol=6)
 ```
 
-The box-plots do not reveal any enormous outliers in any of the features, meaning it is unlikely we will need to perform outlier detection and removal. 
+```{r echo=F}
+df_character_wide <- df %>% 
+  select(TARGET, STARS, LabelAppeal, AcidIndex) %>%
+  pivot_longer(cols = -TARGET, names_to="variable", values_to="value") %>%
+  arrange(variable, value)
+
+df_character_wide %>% 
+  ggplot(mapping = aes(x = factor(value), y = TARGET)) +
+    geom_boxplot() + 
+    facet_wrap(.~variable, scales="free") +
+    theme_bw() +
+    theme(axis.text.x = element_text(angle = 90))
+```
+
+
+The box-plots do not reveal any enormous outliers in any of the features, meaning it is unlikely we will need to perform outlier detection and removal.  `AcidIndex`, `LabelAppeal`, and `STARS` are essentially categorical in nature (ordinal), so we explore how each value of those features relates with `TARGET`.  We see a clear relationship - as `LabelAppeal` increases, so does `TARGET`.  
+
+We see the same relationship between `STARS` and `TARGET` - we especially note that `STARS=NA` highly correlates with lower `TARGET`.  In the original project instructions, attention was drawn to the fact that missing data might be informative.  Based on this, we will impute `STARS=NA` into `STARS=0` which fits with the other values we see for `STARS` and the pattern that as stars increase, cases sold increase.
 
 ### Variable Plots
 
@@ -253,7 +257,7 @@ Finally, we wanted to plot scatter plots of each variable versus the target vari
 featurePlot(df[,2:ncol(df)], df[,1], pch = 20)
 ```
 
-Due to the discrete nature of the target, it is somewhat difficult to see clear linear relationships in the data. However, it does appear that both STARS and LabelAppeal have a significant positive relationship with the target, and many of the chemical features have at least some negative relationship with the target as lower values led to more values of 8 and 7 in the target variable.
+Due to the discrete nature of the target, it is somewhat difficult to see clear linear relationships in the data. However, it does appear that both `STARS` and `LabelAppeal` have a significant positive relationship with the `TARGET`, and many of the chemical features have at least some negative relationship with the `TARGET` as lower values led to more values of 8 and 7 in the target variable.
 
 Overall, although our plots indicate some interesting relationships between our variables, they also reveal some significant issues with the data. 
 
@@ -270,24 +274,47 @@ missing_pct <- round(missing / nrow(df) * 100, 2)
 stack(sort(missing_pct, decreasing = TRUE))
 ```
 
-In the project description, it was noted that the fact that a certain variable is missing may be predictive. As such, before imputing the missing variables, we will create a dummy variable for each feature with missing values indicating whether or not that feature was missing. We will then impute the missing data as the median of the feature, while still retaining the information that the value was missing. This allows us to use missing values in our regression model when normally this would not be possible.
+In the project description, it was noted that the fact that a certain variable is missing may be predictive. We will impute `STARS=NA` to `STARS=0`. We will impute the remaining missing data using `caret::preProcess` and `method=knnImpute`.  Note that `preProcess` will also center, scale and `BoxCox` our features at the same time.
 
-```{r echo=FALSE}
-create_na_dummy <- function(vector){
+```{r}
+# separate our features from target so we don't inadvertently transform the target
+training_x <- df %>% select(-TARGET)
+training_y <- df$TARGET
+
+# separate our features from target so we don't inadvertently transform the target
+eval_x <- df_eval %>% select(-TARGET)
+eval_y <- df_eval$TARGET
+
+create_na_dummy <- function(vector) {
   as.integer(vector %>% is.na())
 }
-df$STARS_NA <- create_na_dummy(df$STARS)
-df$Sulphates_NA <- create_na_dummy(df$Sulphates)
-df$TotalSulfurDioxide_NA <- create_na_dummy(df$TotalSulfurDioxide)
-df$Alcohol_NA <- create_na_dummy(df$Alcohol)
-df$FreeSulfurDioxide_NA <- create_na_dummy(df$FreeSulfurDioxide)
-df$Chlorides_NA <- create_na_dummy(df$Chlorides)
-df$ResidualSugar_NA <- create_na_dummy(df$ResidualSugar)
-df$pH_NA <- create_na_dummy(df$pH)
-clean_df <- df %>% 
-  impute(what = 'median') %>% as.data.frame()
-gather_clean_df <- clean_df %>% 
-  gather(key = 'variable', value = 'value', -TARGET)
+
+impute_missing <- function(data) {
+  # Replace missing STARS with 0 
+  data$STARS <- data$STARS %>%
+    replace_na(0)
+
+  return(data)
+}
+
+# Replace missing STARS with 'unknown' and convert STASR to a factor
+training_x <- impute_missing(training_x)
+eval_x <- impute_missing(eval_x)
+
+imputation <- preProcess(training_x, method = c("knnImpute", 'BoxCox'))
+# summary(imputation)
+
+training_x_imp <- predict(imputation, training_x)
+eval_x_imp <- predict(imputation, eval_x)
+
+clean_df <- cbind(training_y, training_x_imp) %>% 
+  as.data.frame() %>%
+  rename(TARGET = training_y)
+
+clean_eval_df <- cbind(eval_y, eval_x_imp) %>% 
+  as.data.frame() %>%
+  rename(TARGET = eval_y)
+  
 ```
 
 ### Feature-Target Correlations
@@ -299,13 +326,13 @@ With our missing data imputed correctly, we can now build off the scatter plots 
 stack(sort(cor(clean_df[,1], clean_df[,2:ncol(clean_df)])[,], decreasing=TRUE))
 ```
 
-STARS and LabelAppeal have the highest correlation with the Target, which matches what we saw in the variable plots above. Interestingly, STARS_NA has a HUGE negative correlation with the target, indicating that wines missing a rating are MUCH less likely to have high purchase quantities.
+`STARS`, `LabelAppeal`, and `Alcohol` have the highest correlation with `TARGET`, which matches what we saw in the variable plots above. Recall that we imputed `NA` values for `STARS` as `0`.  WE note that the missing value dummy indicators do not correlate with `TARGET`, so these additional columns may not provide much additional predictive power.  We will include them for now.
 
 ### Multicolinearity
 
 One problem that can occur with multi-variable regression is correlation between variables, or multicolinearity. A quick check is to run correlations between variables.   
 
-```{r echo=FALSE}
+```{r echo=FALSE, fig.height=8}
 # Calculate and plot the Multicolinearity
 correlation = cor(clean_df, use = 'pairwise.complete.obs')
 corrplot(correlation, 'ellipse', type = 'lower', order = 'hclust',
@@ -332,37 +359,40 @@ Many of the numerical features had unreasonable negative values. We transformed 
 
 ### Transform non-normal variables
 
-Finally, as mentioned earlier in our data exploration, and our findings from our histogram plots, we can see that some of our variables are highly skewed. To address this, we decided to perform some transformations to make them more normally distributed. Here are some plots to demonstrate the changes in distributions before and after the transformations:  
+Finally, as mentioned earlier in our data exploration, during the impute step, `caret::preProcess()` automatically centered, scaled and BoxCox transformed our data.  Here are some plots to demonstrate the changes in distributions and final values after the transformations:  
 
 ```{r echo=FALSE, fig.height=12, fig.width=10, message=FALSE, warning=FALSE}
 # created empty data frame to store transformed variables
-df_temp <- data.frame(matrix(ncol = 1, nrow = length(clean_df$TARGET)))
+#df_temp <- data.frame(matrix(ncol = 1, nrow = length(clean_df$TARGET)))
+
 # performed log transformation
-df_temp$Chlorides <- clean_df$Chlorides
-df_temp$Chlorides_transform <- log(clean_df$Chlorides)
+#df_temp$Chlorides <- clean_df$Chlorides
+#df_temp$Chlorides_transform <- log(clean_df$Chlorides)
+
 # performed log transformation
-df_temp$CitricAcid <- clean_df$CitricAcid
-df_temp$CitricAcid_transform <- log(clean_df$CitricAcid)
+#df_temp$CitricAcid <- clean_df$CitricAcid
+#df_temp$CitricAcid_transform <- log(clean_df$CitricAcid)
+
 # performed a log transformation
-df_temp$FixedAcidity <- clean_df$FixedAcidity
-df_temp$FixedAcidity_transform <- log(clean_df$FixedAcidity)
+#df_temp$FixedAcidity <- clean_df$FixedAcidity
+#df_temp$FixedAcidity_transform <- log(clean_df$FixedAcidity)
 # performed a log transformation
-df_temp$FreeSulfurDioxide <- clean_df$FreeSulfurDioxide
-df_temp$FreeSulfurDioxide_transform <- log(clean_df$FreeSulfurDioxide)
+#df_temp$FreeSulfurDioxide <- clean_df$FreeSulfurDioxide
+#df_temp$FreeSulfurDioxide_transform <- log(clean_df$FreeSulfurDioxide)
 # performed a log transformation
-df_temp$ResidualSugar <- clean_df$ResidualSugar
-df_temp$ResidualSugar_transform <- log(clean_df$ResidualSugar)
+#df_temp$ResidualSugar <- clean_df$ResidualSugar
+#df_temp$ResidualSugar_transform <- log(clean_df$ResidualSugar)
 # performed a log transformation
-df_temp$Sulphates <- clean_df$Sulphates
-df_temp$Sulphates_transform <- log(clean_df$Sulphates)
+#df_temp$Sulphates <- clean_df$Sulphates
+#df_temp$Sulphates_transform <- log(clean_df$Sulphates)
 # performed a log transformation
-df_temp$TotalSulfurDioxide <- clean_df$TotalSulfurDioxide
-df_temp$TotalSulfurDioxide_transform <- log(clean_df$TotalSulfurDioxide)
+#df_temp$TotalSulfurDioxide <- clean_df$TotalSulfurDioxide
+#df_temp$TotalSulfurDioxide_transform <- log(clean_df$TotalSulfurDioxide)
 # performed a log transformation
-df_temp$VolatileAcidity <- clean_df$VolatileAcidity
-df_temp$VolatileAcidity_transform <- log(clean_df$VolatileAcidity)
-df_temp <- df_temp[, 2:17]
-histbox(df_temp, c(6, 2))
+#df_temp$VolatileAcidity <- clean_df$VolatileAcidity
+#df_temp$VolatileAcidity_transform <- log(clean_df$VolatileAcidity)
+#df_temp <- df_temp[, 2:17]
+histbox(clean_df, c(6, 3))
 # performed boxcox transformation after identifying proper lambda
 #df_temp$BATTING_HR <- clean_df$BATTING_HR
 #battingHR_lambda <- BoxCox.lambda(clean_df$BATTING_HR)
@@ -373,52 +403,107 @@ We see that after the transformations, the variables are more centered and more 
 
 ### Finalizing the dataset for model building 
 
-With our transformations complete, we can now add these into our `clean_df` dataframe and continue on to build our models.
+With our transformations complete, we can now add these into our `clean_df` dataframe and continue on to build our models.  To better measure each model performance, we split our data into a training and testing data set.  We will train using the first, then measure model performance again the testing hold out set.
 
-```{r}
-# Build clean dataframe with transformation
-clean_df <- data.frame(cbind(clean_df, 
-                        Chlorides_transform = df_temp$Chlorides_transform,
-                        CitricAcid_transform = df_temp$CitricAcid_transform,
-                        FixedAcidity_transform = df_temp$FixedAcidity_transform,
-                        FreeSulfurDioxide_transform = df_temp$FreeSulfurDioxide_transform,
-                        ResidualSugar_transform = df_temp$ResidualSugar_transform,
-                        Sulphates_transform = df_temp$Sulphates_transform,
-                        TotalSulfurDioxide_transform = df_temp$TotalSulfurDioxide_transform,
-                        VolatileAcidity_transform = df_temp$VolatileAcidity_transform))
+```{r echo=F}
+options(scipen = 999)
+
+#75% data test training split
+# get training/test split
+y_raw <- as.matrix(clean_df$TARGET)
+trainingRows <- createDataPartition(y_raw, p=0.8, list=FALSE)
+
+# Build training data sets
+trainX <- clean_df[trainingRows,] %>% select(-TARGET)
+trainY <- clean_df[trainingRows,] %>% select(TARGET)
+
+# put remaining rows into the test sets
+testX <- clean_df[-trainingRows,] %>% select(-TARGET)
+testY <- clean_df[-trainingRows,] %>% select(TARGET)
+
+# Build a DF
+trainingData <- as.data.frame(trainX)
+trainingData$TARGET <- trainY$TARGET
+print(paste('Number of Training Samples: ', dim(trainingData)[1]))
+
+testingData <- as.data.frame(testX)
+testingData$TARGET <- testY$TARGET
+print(paste('Number of Testing Samples: ', dim(testingData)[1]))
+
+model_test_perf <- function(model, trainX, trainY, testX, testY) {
+  # Evaluate Model 1 with testing data set
+  predictedY <- predict(model, newdata=trainX)
+
+  model_results <- data.frame(obs = trainY, pred=predictedY)
+  colnames(model_results) = c('obs', 'pred')
+  
+  # This grabs RMSE, Rsquaredand MAE by default
+  model_eval <- defaultSummary(model_results)
+  
+  # Add AIC score to the results
+  if ('aic' %in% model) {
+    model_eval[4] <- model$aic
+  } else {
+    model_eval[4] <- AIC(model)
+  }
+  
+  names(model_eval)[4] <- 'aic'
+ 
+  # Add BIC score to the results
+  model_eval[5] <- BIC(model)
+  names(model_eval)[5] <- 'bic'
+
+   
+  return(model_eval)
+}
 ```
 
 ## 3. Model Building
 
 ### Poisson Model 1
 
-The predictors for the following model are:
+In this first model, we include all available features including the dummy NA indicators. Features include:
 
-`FixedAcidity` `VolatileAcidity` `CitricAcid` `ResidualSugar` `Chlorides` `FreeSulfurDioxide` `TotalSulfurDioxide` `Density` `pH` `Sulphates` `Alcohol` `LabelAppeal` `AcidIndex` `STARS`
+`FixedAcidity`, `VolatileAcidity`, `CitricAcid`, `ResidualSugar`, `Chlorides`, `FreeSulfurDioxide`, `TotalSulfurDioxide`, `Density`, `pH`, `Sulphates`, `Alcohol`, `LabelAppeal`, `AcidIndex`, `STARS`
 
-```{r echo=TRUE}
+```{r echo=F}
+options(scipen = 999)
 
-poiss1 <- glm(TARGET~ FixedAcidity+VolatileAcidity+CitricAcid+ResidualSugar+Chlorides
-              +FreeSulfurDioxide+TotalSulfurDioxide+Density+pH+Sulphates+Alcohol
-              +as.factor(LabelAppeal)+as.factor(AcidIndex) + as.factor(STARS),data=clean_df, 
+poiss1 <- glm(TARGET ~ FixedAcidity + VolatileAcidity + CitricAcid + ResidualSugar + 
+                Chlorides + FreeSulfurDioxide + TotalSulfurDioxide + Density +
+                pH + Sulphates + Alcohol + 
+                as.factor(LabelAppeal) +
+                as.factor(AcidIndex) +
+                as.factor(STARS),
+              data=trainingData, 
               family=poisson)
+
 summary(poiss1)
+
+# Evaluate Model 1 with testing data set
+(poiss1_eval <- model_test_perf(poiss1, trainX, trainY, testX, testY))
 
 ```
 
 ### Poisson Model 2
 
-The predictors for the following model are:
+In this second model, we only include the most predictive features based on our first Poisson Model.  The predictors for the following model are:
 
-`VolatileAcidity` `TotalSulfurDioxide` `Alcohol` `LabelAppeal` `AcidIndex` `STARS`
+`VolatileAcidity`, `TotalSulfurDioxide`, `Alcohol`, `LabelAppeal`, `AcidIndex`, `STARS`
 
-```{r echo=TRUE}
+```{r echo=F}
 
-poiss2 <- glm(TARGET~ VolatileAcidity+TotalSulfurDioxide+Alcohol+as.factor(LabelAppeal)
-              +as.factor(AcidIndex) + as.factor(STARS),data=clean_df, family=poisson)
+poiss2 <- glm(TARGET ~ VolatileAcidity + TotalSulfurDioxide + Alcohol + 
+                as.factor(LabelAppeal) + 
+                as.factor(AcidIndex) + 
+                as.factor(STARS),
+              data=clean_df, 
+              family=poisson)
 
 summary(poiss2)
 
+# Evaluate Model 1 with testing data set
+(poiss2_eval <- model_test_perf(poiss2, trainX, trainY, testX, testY))
 ```
 
 
@@ -426,15 +511,20 @@ summary(poiss2)
 
 Similar to Poisson Model 1, the predictors for the following model are:
 
-`FixedAcidity` `VolatileAcidity` `CitricAcid` `ResidualSugar` `Chlorides` `FreeSulfurDioxide` `TotalSulfurDioxide` `Density` `pH` `Sulphates` `Alcohol` `LabelAppeal` `AcidIndex` `STARS`
+`FixedAcidity`, `VolatileAcidity`, `CitricAcid`, `ResidualSugar`, `Chlorides`, `FreeSulfurDioxide`, `TotalSulfurDioxide`, `Density`, `pH`, `Sulphates`, `Alcohol`, `LabelAppeal`, `AcidIndex`, `STARS`
 
-```{r echo=TRUE}
-
-nb3 <- glm.nb(TARGET~ FixedAcidity+VolatileAcidity+CitricAcid+ResidualSugar+Chlorides
-              +FreeSulfurDioxide+TotalSulfurDioxide+Density+pH+Sulphates+Alcohol
-              +as.factor(LabelAppeal)+as.factor(AcidIndex) + as.factor(STARS),data=clean_df)
-
+```{r echo=F}
+nb3 <- glm.nb(TARGET ~ FixedAcidity + VolatileAcidity + CitricAcid + ResidualSugar + 
+                Chlorides + FreeSulfurDioxide + TotalSulfurDioxide + Density +
+                pH + Sulphates + Alcohol + 
+                as.factor(LabelAppeal) +
+                as.factor(AcidIndex) +
+                as.factor(STARS),
+              data=clean_df)
 summary(nb3)
+
+# Evaluate Model 1 with testing data set
+(nb3_eval <- model_test_perf(nb3, trainX, trainY, testX, testY))
 
 ```
 
@@ -443,14 +533,20 @@ summary(nb3)
 
 Similar to Poisson Model 2, the predictors for the following model are:
 
-`VolatileAcidity` `TotalSulfurDioxide` `Alcohol` `LabelAppeal` `AcidIndex` `STARS`
+`VolatileAcidity`, `TotalSulfurDioxide`, `Alcohol`, `LabelAppeal`, `AcidIndex`, `STARS`
 
-```{r echo=TRUE}
+```{r echo=F}
 
-nb4 <- glm.nb(TARGET~ VolatileAcidity+TotalSulfurDioxide+Alcohol+as.factor(LabelAppeal)
-              +as.factor(AcidIndex) + as.factor(STARS),data=clean_df)
+nb4 <- glm.nb(TARGET~ VolatileAcidity + TotalSulfurDioxide + Alcohol +
+                as.factor(LabelAppeal) +
+                as.factor(AcidIndex) + 
+                as.factor(STARS),
+              data=clean_df)
 
 summary (nb4)
+
+# Evaluate Model 1 with testing data set
+(nb4_eval <- model_test_perf(nb4, trainX, trainY, testX, testY))
 
 ```
 
@@ -458,15 +554,43 @@ summary (nb4)
 
 The predictors for the following model are:
 
-`FixedAcidity` `VolatileAcidity` `CitricAcid` `ResidualSugar` `Chlorides` `FreeSulfurDioxide` `TotalSulfurDioxide` `Density` `pH` `Sulphates` `Alcohol` `LabelAppeal` `AcidIndex` `STARS`
+`FixedAcidity`, `VolatileAcidity`, `CitricAcid`, `ResidualSugar`, `Chlorides`, `FreeSulfurDioxide`, `TotalSulfurDioxide`, `Density`, `pH`, `Sulphates`, `Alcohol`, `LabelAppeal`, `AcidIndex`, `STARS`
 
-```{r echo=TRUE}
+```{r echo=FALSE}
+lm5 <- lm(TARGET ~ FixedAcidity + VolatileAcidity + CitricAcid + ResidualSugar + 
+                Chlorides + FreeSulfurDioxide + TotalSulfurDioxide + Density +
+                pH + Sulphates + Alcohol + 
+                as.factor(LabelAppeal) +
+                as.factor(AcidIndex) +
+                as.factor(STARS),
+              data=clean_df)
 
-lm5 <- lm(TARGET~FixedAcidity+VolatileAcidity+CitricAcid+ResidualSugar+Chlorides
-              +FreeSulfurDioxide+TotalSulfurDioxide+Density+pH+Sulphates+Alcohol
-              +as.factor(LabelAppeal)+as.factor(AcidIndex) + as.factor(STARS),data=clean_df)
-summary (lm5)
+summary(lm5)
+
+# Evaluate Model 1 with testing data set
+(lm5_eval <- model_test_perf(lm5, trainX, trainY, testX, testY))
+
+```
+
+### Linear Model 6
+
+For the final Linear Model, we leverage `stepAIC` on our Linear Model #5 to choose the most important features.
+
+```{r echo=FALSE}
+lm6 <- stepAIC(lm5, direction = "both",
+               scope = list(upper = lm5, lower = ~ 1),
+               scale = 0, trace = FALSE)
+
+summary(lm6)
+
+# Evaluate Model 1 with testing data set
+(lm6_eval <- model_test_perf(lm6, trainX, trainY, testX, testY))
 
 ```
 
 ## 4. Model Selection & Analysis
+
+```{r echo=F}
+(models_summary <- rbind(poiss1_eval, poiss2_eval, nb3_eval, nb4_eval, lm5_eval, lm6_eval))
+```
+
