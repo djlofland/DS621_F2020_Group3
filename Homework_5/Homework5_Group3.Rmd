@@ -592,9 +592,9 @@ lm6VIP <- variableImportancePlot(lm6, "Linear Model 6 Variable Importance")
 
 ## 4. Model Selection & Analysis
 
-This table summarizes the **RMSE**, **$R^2$**, **MAE**, **AIC** and **BIC** for all 6 models.  In terms of raw metrics, The Linear regressions (**lm5** and **lm6**) had the overall best performance based on **RMSE** and **$R62$**; however, **Poisson Model 1** had the best performance based on **AIC** and **BIC**.  
+This table summarizes the **RMSE**, **$R^2$**, **MAE**, **AIC** and **BIC** for all 6 models.  In terms of raw metrics, The Linear regressions (**Linear Model 5** and **Linear Model 6**) had the overall best performance based on **RMSE** and **$R^2$**; however, **Poisson Model 1** had the best performance based on **AIC** and **BIC**.  
 
-Overall, **RMSE** an **$R^2$** were not significantly different across the 6 models, given this we chosoe **Poisson Model 1** since it had a far lower **AIC**.
+Overall, **RMSE** an **$R^2$** were not largely different across the 6 models, given this we chose **Poisson Model 1** as our final model since it had a far lower **AIC**.
 
 ```{r echo=F}
 models_summary <- rbind(poiss1_eval, poiss2_eval, nb3_eval, nb4_eval, lm5_eval, lm6_eval)
