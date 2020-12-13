@@ -141,7 +141,7 @@ model_performance_extraction <- function(model=NULL) {
 
 The wine dataset is a highly popular one in the data science community, as it models some of the challenges of real world datasets and can be modeled by a variety of different model types.
 
-We will first explore the data looking for issues or challenges (i.e. missing data, outliers, possible coding errors, multicollinearlity, etc).  Once we have a handle on the data, we will apply any necessary cleaning steps.  Once we have a reasonable dataset to work with, we will build and evaluate three different linear models that predict seasonal wins.  Our dataset includes both training data and evaluation data - we will train using the main training data, then evaluate models based on how well they perform against the holdout evaluation data.  Finally we will select a final model that offers the best compromise between accuracy and simplicity. 
+We will first explore the data looking for issues or challenges (i.e. missing data, outliers, possible coding errors, multicollinearlity, etc).  Once we have a handle on the data, we will apply any necessary cleaning steps.  Once we have a reasonable dataset to work with, we will build and evaluate three different linear models that predict sales.  Our dataset includes both training data and evaluation data - we will train using the main training data, then evaluate models based on how well they perform against the holdout evaluation data.  Finally we will select a final model that offers the best compromise between accuracy and simplicity. 
 
 
 ## 1. Data Exploration
@@ -209,7 +209,7 @@ We see that most variables have a somewhat normal (although steep) distribution.
 
 The distribution profiles show right skew in variables `AcidIndex`, and `STARS`. 
 
-More interesting is the shape of many features where they are centered with most values clustered at the center and somewhat uniform shape above and below.  It almost appears like a tri-modal distribution with a low, middle and high normal distributions overlapping.  We are not going to do extensive feature engineer, or we might consider breaking these features up into 3 separate features each.  Two approaches include: 
+More interesting is the shape of many features where they are centered with most values clustered at the center and somewhat uniform shape above and below.  It almost appears like a tri-modal distribution with a low, middle and high normal distributions overlapping.  We are not going to do extensive feature engineering, or we might consider breaking these features up into 3 separate features each.  Two approaches include: 
 
 1. Use `mixTools` to separate the multi-modal curves into 3 distinct (and separate) features each capturing just the `low`, `middle` or `high` values and retaining a numerical value.
 2. Discretize the features converting them into categorical values indicating `low`, `middle` or `high` value.
@@ -261,7 +261,7 @@ Due to the discrete nature of the target, it is somewhat difficult to see clear 
 
 Overall, although our plots indicate some interesting relationships between our variables, they also reveal some significant issues with the data. 
 
-For instance, most of the predictor variables are skewed or non-normally distributed, and will need to be transformed. Additionally, there are many data points that contain missing data that will need to be either imputed or discarded. There also was the issue of nonsensical negative values. We have chosen to take the absolute value of these as the feature value as there are so many of these values: however, there is no evidence to back up that this is a correct decision and that these values are not simply missing.
+For instance, there are many data points that contain missing data that will need to be either imputed or discarded. There also was the issue of nonsensical negative values for variables measuring a concentration; we have chosen to assume that these variables have been log transformed and these values are not in error. However, there is no evidence to back up this decision, and we would need to reevaluate if given more information on the data collection/transformation process.
 
 ### Missing Data
 
@@ -326,7 +326,7 @@ With our missing data imputed correctly, we can now build off the scatter plots 
 stack(sort(cor(clean_df[,1], clean_df[,2:ncol(clean_df)])[,], decreasing=TRUE))
 ```
 
-`STARS`, `LabelAppeal`, and `Alcohol` have the highest correlation with `TARGET`, which matches what we saw in the variable plots above. Recall that we imputed `NA` values for `STARS` as `0`.  WE note that the missing value dummy indicators do not correlate with `TARGET`, so these additional columns may not provide much additional predictive power.  We will include them for now.
+`STARS`, `LabelAppeal`, and `AcidIndex` have the highest correlation with `TARGET`, which matches what we saw in the variable plots above. Recall that we imputed `NA` values for `STARS` as `0`. 
 
 ### Multicolinearity
 
@@ -351,11 +351,11 @@ We removed the INDEX field as it offers no information for a model.
 
 ### Missing Values
 
-For the 8 features with missing values, we created a dummy variable that is 1 if the value is missing and 0 if it is not. We then imputed the missing values as the median of the feature, allowing us to using records with missing values while still including the information that the value is missing.
+For the STARS field, we imputed NAs as the value of 0, since missing values were highly correlated with the target variable. For other fields with missing values, we imputed their value using caret's knnimpute.
 
 ### Outliers
 
-Many of the numerical features had unreasonable negative values. We transformed these to be the absolute value of the feature, as a data entry error seems likely given the quantity of negative records.
+Many of the numerical features have somewhat unreasonable negative values, but we are choosing to believe that these are log-transformed variables and that the values are legitimate.
 
 ### Transform non-normal variables
 
