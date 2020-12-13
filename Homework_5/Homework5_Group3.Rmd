@@ -4,15 +4,17 @@ subtitle: 'Wine Regression'
 author: 'Zach Alexander, Sam Bellows, Donny Lofland, Joshua Registe, Neil Shah, Aaron Zalki'
 data: '12/06/2020'
 output:
+  pdf_document:
+    extra_dependencies: ["geometry", "multicol", "multirow", "xcolor"]
   html_document:  
     theme: cerulean
     highlight: pygments
     css: https://raw.githubusercontent.com/djlofland/DS621_F2020_Group3/master/Homework_5/lab.css
     toc: true
     toc_float: true
-  pdf_document:
-    extra_dependencies: ["geometry", "multicol", "multirow", "xcolor"]
 ---
+
+Source code: [https://github.com/djlofland/DS621_F2020_Group3/tree/master/Homework_5](https://github.com/djlofland/DS621_F2020_Group3/tree/master/Homework_5)
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = FALSE, warning = FALSE)
