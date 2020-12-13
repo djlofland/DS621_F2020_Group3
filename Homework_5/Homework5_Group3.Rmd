@@ -482,7 +482,7 @@ summary(poiss1)
 
 # Evaluate Model 1 with testing data set
 (poiss1_eval <- model_test_perf(poiss1, trainX, trainY, testX, testY))
-
+po1VIP <- variableImportancePlot(poiss1, "Poisson Model 1 Variable Importance")
 ```
 
 ### Poisson Model 2
@@ -504,6 +504,7 @@ summary(poiss2)
 
 # Evaluate Model 1 with testing data set
 (poiss2_eval <- model_test_perf(poiss2, trainX, trainY, testX, testY))
+po2VIP <- variableImportancePlot(poiss2, "Poisson Model 2 Variable Importance")
 ```
 
 
@@ -525,7 +526,7 @@ summary(nb3)
 
 # Evaluate Model 1 with testing data set
 (nb3_eval <- model_test_perf(nb3, trainX, trainY, testX, testY))
-
+nb3VIP <- variableImportancePlot(nb3, "Negative Binomial 3 Variable Importance")
 ```
 
 
@@ -533,11 +534,11 @@ summary(nb3)
 
 Similar to Poisson Model 2, the predictors for the following model are:
 
-`VolatileAcidity`, `TotalSulfurDioxide`, `Alcohol`, `LabelAppeal`, `AcidIndex`, `STARS`
+`VolatileAcidity`, `FreeSulfurDioxide`, `TotalSulfurDioxide`, `Alcohol`, `LabelAppeal`, `AcidIndex`, `STARS`
 
 ```{r echo=F}
 
-nb4 <- glm.nb(TARGET~ VolatileAcidity + TotalSulfurDioxide + Alcohol +
+nb4 <- glm.nb(TARGET~ VolatileAcidity + FreeSulfurDioxide + TotalSulfurDioxide + Alcohol +
                 as.factor(LabelAppeal) +
                 as.factor(AcidIndex) + 
                 as.factor(STARS),
@@ -547,7 +548,7 @@ summary (nb4)
 
 # Evaluate Model 1 with testing data set
 (nb4_eval <- model_test_perf(nb4, trainX, trainY, testX, testY))
-
+nb4VIP <- variableImportancePlot(nb4, "Negative Binomial 4 Variable Importance")
 ```
 
 ### Linear Model 5
@@ -569,7 +570,7 @@ summary(lm5)
 
 # Evaluate Model 1 with testing data set
 (lm5_eval <- model_test_perf(lm5, trainX, trainY, testX, testY))
-
+lm5VIP <- variableImportancePlot(lm5, "Linear Model 5 Variable Importance")
 ```
 
 ### Linear Model 6
@@ -586,11 +587,61 @@ summary(lm6)
 # Evaluate Model 1 with testing data set
 (lm6_eval <- model_test_perf(lm6, trainX, trainY, testX, testY))
 
+lm6VIP <- variableImportancePlot(lm6, "Linear Model 6 Variable Importance")
 ```
 
 ## 4. Model Selection & Analysis
 
+This table summarizes the **RMSE**, **$R^2$**, **MAE**, **AIC** and **BIC** for all 6 models.  In terms of raw metrics, The Linear regressions (**lm5** and **lm6**) had the overall best performance based on **RMSE** and **$R62$**; however, **Poisson Model 1** had the best performance based on **AIC** and **BIC**.  
+
+Overall, **RMSE** an **$R^2$** were not significantly different across the 6 models, given this we chosoe **Poisson Model 1** since it had a far lower **AIC**.
+
 ```{r echo=F}
-(models_summary <- rbind(poiss1_eval, poiss2_eval, nb3_eval, nb4_eval, lm5_eval, lm6_eval))
+models_summary <- rbind(poiss1_eval, poiss2_eval, nb3_eval, nb4_eval, lm5_eval, lm6_eval)
+
+kable(models_summary) %>% 
+  kable_styling(bootstrap_options = "basic", position = "center")
 ```
 
+The final thing we will take a look at is our variable importance for each model.
+
+The final figure presented below shows the feature importance in each model. As we see, all 6 models identified the same top 10 features.   
+
+```{r, fig.width=8, fig.height=12}
+grid.arrange(po1VIP, po2VIP, nb3VIP, nb4VIP, lm5VIP, lm6VIP, ncol = 2)
+```
+
+
+## Predictions
+
+We apply **Poisson Model #1** to the holdout evaluation set to predict the `TARGET` for these instances. We have saved these predictions as csv in the file `eval_predictions.csv`.
+
+Source code: [https://github.com/djlofland/DS621_F2020_Group3/tree/master/Homework_5/eval_predictions.csv](https://github.com/djlofland/DS621_F2020_Group3/tree/master/Homework_5/eval_predictions.csv)
+
+```{r, echo=F}
+eval_data <- clean_eval_df %>% select(-TARGET)
+
+predictions <- predict(poiss1, eval_data)
+clean_eval_df$TARGET <- predictions
+
+write.csv(clean_eval_df, 'eval_predictions.csv', row.names=F)
+
+head(clean_eval_df)
+```
+
+## References
+
+- A Modern Approach to Regression with R: Simon Sheather
+- Linear Models with R: Julian Faraway. 
+- R package vignette, [mixtools: An R Package for Analyzing Finite Mixture Models](https://cran.r-project.org/web/packages/mixtools/vignettes/mixtools.pdf)
+- [7 Classic OLS assumptions](https://statisticsbyjim.com/regression/ols-linear-regression-assumptions/)
+- [Detecting Multicolinearity with VIF](https://online.stat.psu.edu/stat462/node/180/)
+
+
+## Appendix
+
+### R Code
+
+```
+[[[INSERT R CODE HERE ONCE ALL CHANGE DONE]]]
+```
