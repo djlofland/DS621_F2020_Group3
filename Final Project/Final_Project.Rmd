@@ -163,13 +163,14 @@ initial_cleaning<- function(dataset){
 ## Introduction
 
 ```{r}
-read.csv("datasets/")
+read.csv("datasets/AutoCO2Emissions/CO2 Emissions_Canada.csv")
 
 
 ```
 
 
 ### Summary Stats
+
 
 
 ### Check Class Bias
