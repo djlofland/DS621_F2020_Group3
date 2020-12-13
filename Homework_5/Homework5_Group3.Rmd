@@ -158,7 +158,7 @@ df <- read.csv('https://raw.githubusercontent.com/djlofland/DS621_F2020_Group3/m
 df_eval <- read.csv('https://raw.githubusercontent.com/djlofland/DS621_F2020_Group3/master/Homework_5/datasets/wine-evaluation-data.csv')
 ```
 
-![Variables of Interest](https://raw.githubusercontent.com/djlofland/DS621_F2020_Group3/master/Homework_5/figures/Variables.png)
+![Variables of Interest](./figures/Variables.png)
 
 
 Given that the Index column had no impact on the target variable, number of wines, it was dropped. 
