@@ -163,7 +163,7 @@ initial_cleaning<- function(dataset){
 ## Introduction
 
 ```{r}
-read.csv("datasets/AutoCO2Emissions/CO2 Emissions_Canada.csv")
+kaggledf<-read.csv("datasets/Kaggle CO2/CO2 Emissions_Canada.csv")
 
 
 ```
@@ -171,13 +171,29 @@ read.csv("datasets/AutoCO2Emissions/CO2 Emissions_Canada.csv")
 
 ### Summary Stats
 
-
-
-### Check Class Bias
+```{r}
+skim(kaggledf)
+```
 
 
 
 ### Distributions
+
+```{r fig.height=10, fig.width=14}
+DataExplorer::plot_bar(
+  data = kaggledf,
+         order_bar = T,
+         ggtheme=theme_bw())
+```
+
+
+```{r, echo=FALSE}
+DataExplorer::plot_histogram(
+  geom_histogram_args = list(alpha = 0.5),
+   data = kaggledf,
+         ggtheme=theme_bw())
+```
+
 
 
 ### Boxplots
@@ -185,12 +201,27 @@ read.csv("datasets/AutoCO2Emissions/CO2 Emissions_Canada.csv")
 
 
 
+
+
 ### Variable Plots
+
+```{r}
+DataExplorer::plot_scatterplot(
+    data = dplyr::select_if(kaggledf,is.numeric),
+    by = "CO2.Emissions.g.km.",
+         ggtheme=theme_bw(),
+    theme_config = list(axis.text.x = element_text(angle = 90)))
+
+```
 
 
 ### Data Sparsity Check
 
+```{r}
+DataExplorer::plot_missing(kaggledf, ggtheme = theme_bw())
 
+gg_miss_upset(kaggledf)
+```
 
 ## 2. Data Preparation
 
@@ -199,14 +230,16 @@ read.csv("datasets/AutoCO2Emissions/CO2 Emissions_Canada.csv")
 ### Removed Fields
 
 
+
 ### Near Zero Variance
 
 
 
 ### Outliers
 
-```{r}
 
 
-```
+
+### Transform non-normal variables
+
 
