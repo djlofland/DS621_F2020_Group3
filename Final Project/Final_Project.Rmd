@@ -1,6 +1,6 @@
 ---
 title: 'DS 621 Fall2020: Final Project (Group3)'
-subtitle: 'Auto Insurance Regression'
+subtitle: 'CO2 Emissions Regression'
 author: 'Zach Alexander, Sam Bellows, Donny Lofland, Joshua Registe, Neil Shah, Aaron Zalki'
 data: '11/20/2020'
 output:
@@ -15,7 +15,7 @@ output:
 ---
 
 
-Source code: [https://github.com/djlofland/DS621_F2020_Group3/tree/master/Homework_4](https://github.com/djlofland/DS621_F2020_Group3/tree/master/Homework_4)
+Source code: [https://github.com/djlofland/DS621_F2020_Group3/tree/master/Final%20Project](https://github.com/djlofland/DS621_F2020_Group3/tree/master/Final%20Project)
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = FALSE, warning = FALSE)
@@ -160,14 +160,19 @@ initial_cleaning<- function(dataset){
 }
 ```
 
+## Abstract
+
+250 words or less
+
 ## Introduction
 
+Include background and motivation of problem
+
 ```{r}
-kaggledf<-read.csv("datasets/Kaggle CO2/CO2 Emissions_Canada.csv")
-
-
+kaggledf<-read.csv("https://raw.githubusercontent.com/djlofland/DS621_F2020_Group3/master/Final%20Project/datasets/Kaggle%20CO2/CO2%20Emissions_Canada.csv")
 ```
 
+## Methodology
 
 ### Summary Stats
 
@@ -211,7 +216,6 @@ DataExplorer::plot_scatterplot(
     by = "CO2.Emissions.g.km.",
          ggtheme=theme_bw(),
     theme_config = list(axis.text.x = element_text(angle = 90)))
-
 ```
 
 
@@ -219,11 +223,10 @@ DataExplorer::plot_scatterplot(
 
 ```{r}
 DataExplorer::plot_missing(kaggledf, ggtheme = theme_bw())
-
-gg_miss_upset(kaggledf)
+#gg_miss_upset(kaggledf)
 ```
 
-## 2. Data Preparation
+### Data Preparation
 
 
 
@@ -242,4 +245,10 @@ gg_miss_upset(kaggledf)
 
 ### Transform non-normal variables
 
+## Experimentation & Results
 
+### Modeling
+
+## Conclusion
+
+## References & Appendices
