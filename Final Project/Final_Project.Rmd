@@ -304,6 +304,7 @@ cleandf <- cleandf %>% select(-Make, -Model)
 set.seed(123456)
 ```
 
+
 ```{r}
 # utilizing one dataset for all four models
 cleaneddfTrain <- createDataPartition(cleandf$TARGET, p=0.8, list=FALSE)
@@ -315,6 +316,8 @@ cleaneddftesting <- cleandf[-cleaneddfTrain,]
 ```{r}
 model1 <- lm(TARGET ~ ., data = temp_df)
 summary(model1)
+
+linvp1<-variableImportancePlot(model1)
 ```
 
 ### For an initial linear model we'll include everything
@@ -322,6 +325,23 @@ summary(model1)
 ```{r}
 model2 <- lm(TARGET ~ ., data = cleaneddftraining)
 summary(model2)
+
+model_performance<-
+bind_rows(#training data
+  data.frame("Actual" = cleaneddftraining$TARGET,
+           "Predicted" = predict(model2,cleaneddftraining)) %>% 
+    mutate(Model = "Model2",
+         Set = "Training"),
+#testing data
+  data.frame("Actual" = cleaneddftraining$TARGET,
+           "Predicted" = predict(model2,cleaneddftraining)) %>% 
+    mutate(Model = "Model2",
+         Set = "Testing")
+)
+
+linvp2<-variableImportancePlot(model2)
+
+
 ```
 
 ```{r}
@@ -331,6 +351,40 @@ model3 <- stepAIC(model2, direction = "both",
                          scale = 0, trace = FALSE)
 # Display Model 2 Summary
 (model3_summary <- summary(model3))
+
+model_performance<-
+bind_rows(model_performance,
+ data.frame("Actual" = cleaneddftraining$TARGET,
+           "Predicted" = predict(model3,cleaneddftraining)) %>% 
+    mutate(Model = "Model3",
+         Set = "Training"),
+#testing data
+  data.frame("Actual" = cleaneddftraining$TARGET,
+           "Predicted" = predict(model3,cleaneddftraining)) %>% 
+    mutate(Model = "Model3",
+         Set = "Testing")
+)
+linvp3<-variableImportancePlot(model3)
+
+
+```
+
+
+```{r}
+model_performance %>% 
+  ggplot(mapping = aes(x = Actual, y = Predicted, color = Set))+
+  geom_point()+
+  geom_smooth(method = "lm")+
+  facet_wrap(Model~Set)+
+  theme(panel.background = element_blank(),
+        panel.border = element_blank())+
+  stat_poly_eq(aes(label = paste(..adj.rr.label.., sep = "~~~")), 
+                   label.x.npc = "left", label.y.npc = .9,
+                   formula = y~x, parse = TRUE, size = 3.5)
+```
+
+```{r fig.height=6, fig.width=10}
+grid.arrange(linvp1, linvp2, linvp3, ncol = 3)
 ```
 
 
