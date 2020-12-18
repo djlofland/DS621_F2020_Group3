@@ -265,7 +265,7 @@ training_y <- kaggledf$CO2.Emissions.g.km.
 
 training_disc <- kaggledf %>% select(Make, Model, Vehicle.Class, Cylinders, Transmission, Fuel.Type)
 
-imputation <- preProcess(training_x, method = c("knnImpute", 'BoxCox'))
+imputation <- preProcess(training_x, method = c('BoxCox'))
 
 training_x_imp <- predict(imputation, training_x)
 
