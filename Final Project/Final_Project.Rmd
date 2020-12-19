@@ -177,7 +177,7 @@ kaggledf<-read.csv("https://raw.githubusercontent.com/djlofland/DS621_F2020_Grou
 ### Summary Stats
 
 ```{r}
-skim(kaggledf)
+knitr::kable(skim(kaggledf)) %>% kable_styling()
 ```
 
 
@@ -210,8 +210,7 @@ gather_df <- kaggledf %>% select(CO2.Emissions.g.km., Engine.Size.L., Fuel.Consu
 
 # Histogram plots of each variable
 ggplot(gather_df) + 
-  geom_histogram(aes(x=value, y = ..density..), bins=30) + 
-  geom_density(aes(x=value), color='blue') +
+  geom_boxplot(aes(y=value)) +
   facet_wrap(. ~variable, scales='free', ncol=3)
 ```
 
@@ -240,21 +239,24 @@ DataExplorer::plot_missing(kaggledf, ggtheme = theme_bw())
 
 ### Data Preparation
 
-
+The dataset was very clean as it was taken from kaggle which usually provides quite clean datasets. We will analyze to see whether or not there is a need for outlier removal or variable transformation, but no other data preparation is required besides this.
 
 ### Removed Fields
 
-
+No fields were removed, as all fields may be relevant to the target variable and no fields contain a large number of missing values.
 
 ### Near Zero Variance
 
+```{r}
+x = nearZeroVar(kaggledf, saveMetrics=T)
+knitr::kable(x) %>% kable_styling
+```
 
+None of the features have a near zero variance, meaning we do not need to remove any features due to lack of variance.
 
 ### Outliers
 
-
-
-
+Looking at our boxplots, the features have no clear outliers that extend far beyond the other points. As such, there is no need to remove outliers from our data.
 
 ### Transform non-normal variables
 
@@ -295,6 +297,7 @@ cleandf <- cleandf[order(as.numeric(rownames(cleandf))),,drop=FALSE]
 cleandf <- cleandf %>% select(-Make, -Model)
 ```
 
+There is some strong multicollinearity between engine size and the fuel consumption features. We may need to remove one of these features when it comes time to train the model in order to assure model stability.
 
 ## Experimentation & Results
 
@@ -312,7 +315,7 @@ cleaneddftraining <- cleandf[cleaneddfTrain,]
 cleaneddftesting <- cleandf[-cleaneddfTrain,]
 ```
 
-### Just to show that Engine Size and Fuel Consumption are quite predictive of gas emissions
+### Model 1: Exploratory, demonstrates that engine size and fuel consumption predictive of emissions
 ```{r}
 model1 <- lm(TARGET ~ ., data = temp_df)
 summary(model1)
@@ -320,7 +323,7 @@ tidy(model1)
 linvp1<-variableImportancePlot(model1)
 ```
 
-### For an initial linear model we'll include everything
+### Model 2: All features
 
 ```{r}
 model2 <- lm(TARGET ~ ., data = cleaneddftraining)
@@ -343,6 +346,8 @@ linvp2<-variableImportancePlot(model2)
 
 
 ```
+
+### Model 3: Only significant features
 
 ```{r}
 # Build model 2 - this is Model 1 with only significant features (using stepAIC)
