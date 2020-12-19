@@ -316,7 +316,7 @@ cleaneddftesting <- cleandf[-cleaneddfTrain,]
 ```{r}
 model1 <- lm(TARGET ~ ., data = temp_df)
 summary(model1)
-
+tidy(model1)
 linvp1<-variableImportancePlot(model1)
 ```
 
@@ -333,8 +333,8 @@ bind_rows(#training data
     mutate(Model = "Model2",
          Set = "Training"),
 #testing data
-  data.frame("Actual" = cleaneddftraining$TARGET,
-           "Predicted" = predict(model2,cleaneddftraining)) %>% 
+  data.frame("Actual" = cleaneddftesting$TARGET,
+           "Predicted" = predict(model2,cleaneddftesting)) %>% 
     mutate(Model = "Model2",
          Set = "Testing")
 )
@@ -359,8 +359,8 @@ bind_rows(model_performance,
     mutate(Model = "Model3",
          Set = "Training"),
 #testing data
-  data.frame("Actual" = cleaneddftraining$TARGET,
-           "Predicted" = predict(model3,cleaneddftraining)) %>% 
+  data.frame("Actual" = cleaneddftesting$TARGET,
+           "Predicted" = predict(model3,cleaneddftesting)) %>% 
     mutate(Model = "Model3",
          Set = "Testing")
 )
