@@ -56,6 +56,7 @@ library(skimr)
 library(naniar)
 library(RANN)
 library(kableExtra)
+library(readxl)
 #' Print a side-by-side Histogram and QQPlot of Residuals
 #'
 #' @param model A model
@@ -170,6 +171,8 @@ Include background and motivation of problem
 
 ```{r}
 kaggledf<-read.csv("https://raw.githubusercontent.com/djlofland/DS621_F2020_Group3/master/Final%20Project/datasets/Kaggle%20CO2/CO2%20Emissions_Canada.csv")
+
+ca_registrations <- read_excel('datasets/Kaggle CO2/Car Registrations 2018 CA.xlsx')
 ```
 
 ## Methodology
@@ -394,5 +397,20 @@ grid.arrange(linvp1, linvp2, linvp3, ncol = 3)
 
 
 ## Conclusion
+
+We will select Model 3 as our emissions model, as it has the same performance as model 2 with fewer features, reducing the complexity of the regression problem. We will use this model to estimate the total emissions in the state of CA caused by vehicles with internal combusion engines to better understand the magnitude of the effect the ban on these engines will have on overall emissions. In order to do this, we will be using CA car registration data from here: https://www.cncda.org/wp-content/uploads/Cal-Covering-4Q-18.pdf
+
+```{r}
+preds <- predict(model3, cleandf) %>% as.data.frame()
+preds['Make'] <- sapply(kaggledf$Make, str_to_lower)
+preds_avg <- preds %>% group_by(Make) %>% summarize(avg_emissions = mean(.))
+ca_registrations$Make <- ca_registrations$Make %>% sapply(str_to_lower)
+vehicle_reg <- merge(preds_avg, ca_registrations) %>% mutate(Total = avg_emissions * Count)
+total_emissions <- sum(vehicle_reg$Total)
+knitr::kable(vehicle_reg) %>% kable_styling()
+total_emissions
+```
+
+We get a sum total of approximately 432,000,000 grams per km the average vehicle operator drives in CA. Given the Federal Highway Administration estimates that the average driver in the United States drives 13,500 miles per year or 21,726 km, we can estimate that per year, internal combustion engines release 9,386,000,000,000 grams per year, or 20,649,580,500 pounds of CO2 emissions per year. This is an enormous amount of CO2 emissions, and cutting into this will only benefit the CA and world environment.
 
 ## References & Appendices
